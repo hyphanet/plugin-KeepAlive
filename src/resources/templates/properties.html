@@ -40,7 +40,18 @@
                 <input name="loglevel" value="#2" size="2">
                 <input type="submit" name="modify_loglevel" value="change">
                 <input type="submit" name="clear_logs" value="clear all logs">
-                <input type="submit" name="master_log" value="show master log">
+                <a href="/KeepAlive/#log_anchor">
+                	<input type="submit" name="master_log" value="show master log">
+                </a>
+            </td>
+        </tr>
+        
+        <tr>
+            <td>Remove:</td>
+            <td>
+            	<input name="remove_regex" value="" size="50" title="the regex is applied to the key">
+                <input type="submit" name="remove_with_regex" value="remove with regex" title="the regex is applied to the key">
+                <input type="submit" name="remove_all" value="remove all keys">
             </td>
         </tr>
 

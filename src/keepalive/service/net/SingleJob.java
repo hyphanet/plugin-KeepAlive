@@ -21,71 +21,71 @@ package keepalive.service.net;
 import freenet.keys.FreenetURI;
 import freenet.support.compress.Compressor;
 import keepalive.Plugin;
+import keepalive.model.IBlock;
 import keepalive.service.reinserter.Reinserter;
-import keepalive.model.Block;
 
 public abstract class SingleJob {
-
-    public static final int MAX_LIFETIME = 30;
-
-    Plugin plugin;
-    Reinserter reinserter;
-    Block block;
-    byte[] uriExtra;
-    String compressionAlgorithm;
-
-    private String jobType;
-
-    SingleJob(Reinserter reinserter, String jobType, Block block) {
-        this.reinserter = reinserter;
-        this.jobType = jobType;
-        this.block = block;
-        this.plugin = reinserter.getPlugin();
-    }
-
-    FreenetURI getUri() {
-        FreenetURI uri = block.getUri().clone();
-
-        // modify the control flag of the URI to get always the raw data
-        uriExtra = uri.getExtra();
-        uriExtra[2] = 0;
-
-        // get the compression algorithm of the block
-        if (uriExtra[4] >= 0) {
-            compressionAlgorithm =
-                    Compressor.COMPRESSOR_TYPE.getCompressorByMetadataID(uriExtra[4]).name;
-        } else {
-            compressionAlgorithm = "none";
-        }
-
-        log("request: " + block.getUri().toString() +
-                " (crypt=" + uriExtra[1] +
-                ",control=" + block.getUri().getExtra()[2] +
-                ",compress=" + uriExtra[4] + "=" + compressionAlgorithm + ")", 2);
-
-        return uri;
-    }
-
-    void finish() {
-        if (reinserter.isActive() && !reinserter.isInterrupted()) {
-            // log
-            String firstLog = jobType + ": " + block.getUri();
-            if (!block.isFetchSuccessful() && !block.isInsertSuccessful()) {
-                firstLog = "<b>" + firstLog + "</b>";
-                block.setResultLog("<b>" + block.getResultLog() + "</b>");
-            }
-            log(firstLog);
-            log(block.getResultLog());
-        }
-    }
-
-    protected void log(String message, int logLevel) {
-        if (reinserter.isActive() && !Thread.currentThread().isInterrupted() && !reinserter.isInterrupted()) {
-            reinserter.log(block.getSegmentId(), message, 0, logLevel);
-        }
-    }
-
-    protected void log(String message) {
-        log(message, 1);
-    }
+	
+	public static final int MAX_LIFETIME = 30;
+	
+	Plugin plugin;
+	Reinserter reinserter;
+	IBlock block;
+	byte[] uriExtra;
+	String compressionAlgorithm;
+	
+	private final String jobType;
+	
+	SingleJob(Reinserter reinserter, String jobType, IBlock block) {
+		this.reinserter = reinserter;
+		this.jobType = jobType;
+		this.block = block;
+		this.plugin = reinserter.getPlugin();
+	}
+	
+	FreenetURI getUri() {
+		final FreenetURI uri = block.getUri().clone();
+		
+		// modify the control flag of the URI to get always the raw data
+		uriExtra = uri.getExtra();
+		uriExtra[2] = 0;
+		
+		// get the compression algorithm of the block
+		if (uriExtra[4] >= 0) {
+			compressionAlgorithm = Compressor.COMPRESSOR_TYPE.getCompressorByMetadataID(uriExtra[4]).name;
+		} else {
+			compressionAlgorithm = "none";
+		}
+		
+		log("request: " + block.getUri().toString() +
+				" (crypt=" + uriExtra[1] +
+				",control=" + block.getUri().getExtra()[2] +
+				",compress=" + uriExtra[4] + "=" + compressionAlgorithm + ")", 2);
+		
+		return uri;
+	}
+	
+	void finish() {
+		if (reinserter.isActive() && !reinserter.isInterrupted()) {
+			// log
+			String firstLog = jobType + ": " + block.getUri();
+			if (!block.isFetchSuccessful() && !block.isInsertSuccessful()) {
+				firstLog = "<b>" + firstLog + "</b>";
+				block.setResultLog("<b>" + block.getResultLog() + "</b>");
+			}
+			log(firstLog);
+			log(block.getResultLog());
+		}
+	}
+	
+	protected void log(String message, int logLevel) {
+		if (reinserter.isActive() && !Thread.currentThread().isInterrupted() && !reinserter.isInterrupted()) {
+			reinserter.log(block.getSegmentId(), message, 0, logLevel);
+		}
+	}
+	
+	protected void log(String message) {
+		log(message, 1);
+	}
+	
 }

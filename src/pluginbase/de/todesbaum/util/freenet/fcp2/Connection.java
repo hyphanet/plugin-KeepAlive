@@ -30,6 +30,8 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 
+import keepalive.Plugin;
+
 /**
  * A physical connection to a Freenet node.
  *
@@ -37,57 +39,57 @@ import java.util.List;
  * @version $Id$
  */
 public class Connection {
-
+	
 	/**
 	 * The listeners that receive events from this connection.
 	 */
 	private final List<ConnectionListener> connectionListeners = new ArrayList<>();
-
+	
 	/**
 	 * The node this connection is connected to.
 	 */
 	private final Node node;
-
+	
 	/**
 	 * The name of this connection.
 	 */
 	private final String name;
-
+	
 	/**
 	 * The network socket of this connection.
 	 */
 	private Socket nodeSocket;
-
+	
 	/**
 	 * The input stream that reads from the socket.
 	 */
 	private InputStream nodeInputStream;
-
+	
 	/**
 	 * The output stream that writes to the socket.
 	 */
 	private OutputStream nodeOutputStream;
-
+	
 	/**
 	 * The thread that reads from the socket.
 	 */
 	private NodeReader nodeReader;
-
+	
 	/**
 	 * A writer for the output stream.
 	 */
 	private Writer nodeWriter;
-
+	
 	/**
 	 * The NodeHello message sent by the node on connect.
 	 */
 	protected Message nodeHello;
-
+	
 	/**
 	 * The temp directory to use.
 	 */
 	private String tempDirectory;
-
+	
 	/**
 	 * Creates a new connection to the specified node with the specified name.
 	 *
@@ -98,7 +100,7 @@ public class Connection {
 		this.node = node;
 		this.name = name;
 	}
-
+	
 	/**
 	 * Adds a listener that gets notified on connection events.
 	 *
@@ -107,7 +109,7 @@ public class Connection {
 	public void addConnectionListener(ConnectionListener connectionListener) {
 		connectionListeners.add(connectionListener);
 	}
-
+	
 	/**
 	 * Removes a listener from the list of registered listeners. Only the first
 	 * matching listener is removed.
@@ -118,27 +120,27 @@ public class Connection {
 	public void removeConnectionListener(ConnectionListener connectionListener) {
 		connectionListeners.remove(connectionListener);
 	}
-
+	
 	/**
 	 * Notifies listeners about a received message.
 	 *
 	 * @param message The received message
 	 */
 	protected void fireMessageReceived(Message message) {
-		for (ConnectionListener connectionListener : connectionListeners) {
+		for (final ConnectionListener connectionListener : connectionListeners) {
 			connectionListener.messageReceived(this, message);
 		}
 	}
-
+	
 	/**
 	 * Notifies listeners about the loss of the connection.
 	 */
 	protected void fireConnectionTerminated() {
-		for (ConnectionListener connectionListener : connectionListeners) {
+		for (final ConnectionListener connectionListener : connectionListeners) {
 			connectionListener.connectionTerminated(this);
 		}
 	}
-
+	
 	/**
 	 * Returns the name of the connection.
 	 *
@@ -147,7 +149,7 @@ public class Connection {
 	public String getName() {
 		return name;
 	}
-
+	
 	/**
 	 * Sets the temp directory to use for creation of temporary files.
 	 *
@@ -157,7 +159,7 @@ public class Connection {
 	public void setTempDirectory(String tempDirectory) {
 		this.tempDirectory = tempDirectory;
 	}
-
+	
 	/**
 	 * Connects to the node.
 	 *
@@ -179,27 +181,26 @@ public class Connection {
 			nodeOutputStream = nodeSocket.getOutputStream();
 			nodeWriter = new OutputStreamWriter(nodeOutputStream, Charset.forName("UTF-8"));
 			nodeReader = new NodeReader(nodeInputStream);
-			Thread nodeReaderThread = new Thread(nodeReader);
+			final Thread nodeReaderThread = new Thread(nodeReader);
 			nodeReaderThread.setDaemon(true);
-			nodeReaderThread.setName("KeepAlive FCP Thread");
+			nodeReaderThread.setName(Plugin.PLUGIN_NAME + " FCP Thread");
 			nodeReaderThread.start();
-			ClientHello clientHello = new ClientHello();
+			final ClientHello clientHello = new ClientHello();
 			clientHello.setName(name);
 			clientHello.setExpectedVersion("2.0");
 			execute(clientHello);
 			synchronized (this) {
 				try {
 					wait(10000);
-				} catch (InterruptedException e) {
-				}
+				} catch (final InterruptedException e) {}
 			}
 			return nodeHello != null;
-		} catch (IOException ioe1) {
+		} catch (final IOException ioe1) {
 			disconnect();
 			throw ioe1;
 		}
 	}
-
+	
 	/**
 	 * Returns whether this connection is still connected to the node.
 	 *
@@ -209,7 +210,7 @@ public class Connection {
 	public boolean isConnected() {
 		return (nodeHello != null) && (nodeSocket != null) && (nodeSocket.isConnected());
 	}
-
+	
 	/**
 	 * Returns the NodeHello message the node sent on connection.
 	 *
@@ -218,7 +219,7 @@ public class Connection {
 	public Message getNodeHello() {
 		return nodeHello;
 	}
-
+	
 	/**
 	 * Disconnects from the node.
 	 */
@@ -226,29 +227,25 @@ public class Connection {
 		if (nodeWriter != null) {
 			try {
 				nodeWriter.close();
-			} catch (IOException ioe1) {
-			}
+			} catch (final IOException ioe1) {}
 			nodeWriter = null;
 		}
 		if (nodeOutputStream != null) {
 			try {
 				nodeOutputStream.close();
-			} catch (IOException ioe1) {
-			}
+			} catch (final IOException ioe1) {}
 			nodeOutputStream = null;
 		}
 		if (nodeInputStream != null) {
 			try {
 				nodeInputStream.close();
-			} catch (IOException ioe1) {
-			}
+			} catch (final IOException ioe1) {}
 			nodeInputStream = null;
 		}
 		if (nodeSocket != null) {
 			try {
 				nodeSocket.close();
-			} catch (IOException ioe1) {
-			}
+			} catch (final IOException ioe1) {}
 			nodeSocket = null;
 		}
 		synchronized (this) {
@@ -256,7 +253,7 @@ public class Connection {
 		}
 		fireConnectionTerminated();
 	}
-
+	
 	/**
 	 * Executes the specified command.
 	 *
@@ -283,7 +280,7 @@ public class Connection {
 			nodeOutputStream.flush();
 		}
 	}
-
+	
 	/**
 	 * The reader thread for this connection. This is essentially a thread that
 	 * reads lines from the node, creates messages from them and notifies
@@ -293,13 +290,13 @@ public class Connection {
 	 * @version $Id$
 	 */
 	protected class NodeReader implements Runnable {        // changed by jeriadoc 11/2011: private -> protected
-
+		
 		/**
 		 * The input stream to read from.
 		 */
 		@SuppressWarnings("hiding")
 		private final InputStream nodeInputStream;
-
+		
 		/**
 		 * Creates a new reader that reads from the specified input stream.
 		 *
@@ -308,7 +305,7 @@ public class Connection {
 		public NodeReader(InputStream nodeInputStream) {
 			this.nodeInputStream = nodeInputStream;
 		}
-
+		
 		/**
 		 * Main loop of the reader. Lines are read and converted into
 		 * {@link Message} objects.
@@ -337,16 +334,16 @@ public class Connection {
 							tempFile = File.createTempFile("fcpv2", "data", (tempDirectory != null) ? new File(tempDirectory) : null);
 							tempFile.deleteOnExit();
 							try (FileOutputStream tempFileOutputStream = new FileOutputStream(tempFile)) {
-								long dataLength = Long.parseLong(message.get("DataLength"));
+								final long dataLength = Long.parseLong(message.get("DataLength"));
 								StreamCopier.copy(nodeInputStream, tempFileOutputStream, dataLength);
 							}
 							message.setPayloadInputStream(new TempFileInputStream(tempFile));
-						} catch (IOException ioe1) {
+						} catch (final IOException ioe1) {
 							ioe1.printStackTrace();
 						}
 					}
 					if ("Data".equals(line) || "EndMessage".equals(line)) {
-						if (message.getName().equals("NodeHello")) {
+						if ("NodeHello".equals(message.getName())) {
 							nodeHello = message;
 							synchronized (Connection.this) {
 								Connection.this.notify();
@@ -357,11 +354,11 @@ public class Connection {
 						message = null;
 						continue;
 					}
-					int equalsPosition = line.indexOf('=');
+					final int equalsPosition = line.indexOf('=');
 					if (equalsPosition > -1) {
-						String key = line.substring(0, equalsPosition).trim();
-						String value = line.substring(equalsPosition + 1).trim();
-						if (key.equals("Identifier")) {
+						final String key = line.substring(0, equalsPosition).trim();
+						final String value = line.substring(equalsPosition + 1).trim();
+						if ("Identifier".equals(key)) {
 							message.setIdentifier(value);
 						} else {
 							message.put(key, value);
@@ -375,25 +372,23 @@ public class Connection {
 					/* if we got here, some error occured! */
 					throw new IOException("Unexpected line: " + line);
 				}
-			} catch (IOException ioe1) {
+			} catch (final IOException ioe1) {
 				// ioe1.printStackTrace();
 			} finally {
 				if (nodeReader != null) {
 					try {
 						nodeReader.close();
-					} catch (IOException ioe1) {
-					}
+					} catch (final IOException ioe1) {}
 				}
 				if (nodeInputStream != null) {
 					try {
 						nodeInputStream.close();
-					} catch (IOException ioe1) {
-					}
+					} catch (final IOException ioe1) {}
 				}
 			}
 			Connection.this.disconnect();
 		}
-
+		
 	}
-
+	
 }

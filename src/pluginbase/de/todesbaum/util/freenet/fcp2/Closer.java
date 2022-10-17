@@ -40,7 +40,7 @@ import java.sql.Statement;
  * @version $Id$
  */
 public class Closer {
-
+	
 	/**
 	 * Closes the given result set.
 	 *
@@ -51,11 +51,10 @@ public class Closer {
 		if (resultSet != null) {
 			try {
 				resultSet.close();
-			} catch (SQLException ioe1) {
-			}
+			} catch (final SQLException ioe1) {}
 		}
 	}
-
+	
 	/**
 	 * Closes the given statement.
 	 *
@@ -66,11 +65,10 @@ public class Closer {
 		if (statement != null) {
 			try {
 				statement.close();
-			} catch (SQLException ioe1) {
-			}
+			} catch (final SQLException ioe1) {}
 		}
 	}
-
+	
 	/**
 	 * Closes the given connection.
 	 *
@@ -81,11 +79,10 @@ public class Closer {
 		if (connection != null) {
 			try {
 				connection.close();
-			} catch (SQLException ioe1) {
-			}
+			} catch (final SQLException ioe1) {}
 		}
 	}
-
+	
 	/**
 	 * Closes the given server socket.
 	 *
@@ -96,11 +93,10 @@ public class Closer {
 		if (serverSocket != null) {
 			try {
 				serverSocket.close();
-			} catch (IOException ioe1) {
-			}
+			} catch (final IOException ioe1) {}
 		}
 	}
-
+	
 	/**
 	 * Closes the given socket.
 	 *
@@ -111,11 +107,10 @@ public class Closer {
 		if (socket != null) {
 			try {
 				socket.close();
-			} catch (IOException ioe1) {
-			}
+			} catch (final IOException ioe1) {}
 		}
 	}
-
+	
 	/**
 	 * Closes the given input stream.
 	 *
@@ -126,11 +121,10 @@ public class Closer {
 		if (inputStream != null) {
 			try {
 				inputStream.close();
-			} catch (IOException ioe1) {
-			}
+			} catch (final IOException ioe1) {}
 		}
 	}
-
+	
 	/**
 	 * Closes the given output stream.
 	 *
@@ -141,11 +135,10 @@ public class Closer {
 		if (outputStream != null) {
 			try {
 				outputStream.close();
-			} catch (IOException ioe1) {
-			}
+			} catch (final IOException ioe1) {}
 		}
 	}
-
+	
 	/**
 	 * Closes the given reader.
 	 *
@@ -156,11 +149,10 @@ public class Closer {
 		if (reader != null) {
 			try {
 				reader.close();
-			} catch (IOException ioe1) {
-			}
+			} catch (final IOException ioe1) {}
 		}
 	}
-
+	
 	/**
 	 * Closes the given writer.
 	 *
@@ -171,9 +163,8 @@ public class Closer {
 		if (writer != null) {
 			try {
 				writer.close();
-			} catch (IOException ioe1) {
-			}
+			} catch (final IOException ioe1) {}
 		}
 	}
-
+	
 }

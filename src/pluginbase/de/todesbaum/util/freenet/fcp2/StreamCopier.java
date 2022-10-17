@@ -27,32 +27,32 @@ import java.io.OutputStream;
  * @version $Id$
  */
 public class StreamCopier {
-
+	
 	/**
 	 * The default size of the buffer.
 	 */
 	private static final int BUFFER_SIZE = 64 * 1024;
-
+	
 	/**
 	 * The {@link InputStream} to read from.
 	 */
-	private InputStream inputStream;
-
+	private final InputStream inputStream;
+	
 	/**
 	 * The {@link OutputStream} to write to.
 	 */
-	private OutputStream outputStream;
-
+	private final OutputStream outputStream;
+	
 	/**
 	 * The number of bytes to copy.
 	 */
-	private long length;
-
+	private final long length;
+	
 	/**
 	 * The size of the buffer.
 	 */
-	private int bufferSize;
-
+	private final int bufferSize;
+	
 	/**
 	 * Creates a new StreamCopier with the specified parameters and the default
 	 * buffer size.
@@ -64,7 +64,7 @@ public class StreamCopier {
 	public StreamCopier(InputStream inputStream, OutputStream outputStream, long length) {
 		this(inputStream, outputStream, length, BUFFER_SIZE);
 	}
-
+	
 	/**
 	 * Creates a new StreamCopier with the specified parameters and the default
 	 * buffer size.
@@ -80,7 +80,7 @@ public class StreamCopier {
 		this.length = length;
 		this.bufferSize = bufferSize;
 	}
-
+	
 	/**
 	 * Copies the stream data. If the input stream is depleted before the
 	 * requested number of bytes have been read an {@link EOFException} is
@@ -93,7 +93,7 @@ public class StreamCopier {
 	public void copy() throws EOFException, IOException {
 		copy(inputStream, outputStream, length, bufferSize);
 	}
-
+	
 	/**
 	 * Copies <code>length</code> bytes from the <code>inputStream</code> to the
 	 * <code>outputStream</code>.
@@ -106,7 +106,7 @@ public class StreamCopier {
 	public static void copy(InputStream inputStream, OutputStream outputStream, long length) throws IOException {
 		copy(inputStream, outputStream, length, BUFFER_SIZE);
 	}
-
+	
 	/**
 	 * Copies <code>length</code> bytes from the <code>inputStream</code> to the
 	 * <code>outputStream</code> using a buffer with the specified size
@@ -119,9 +119,9 @@ public class StreamCopier {
 	 */
 	public static void copy(InputStream inputStream, OutputStream outputStream, long length, int bufferSize) throws IOException {
 		long remaining = length;
-		byte[] buffer = new byte[bufferSize];
+		final byte[] buffer = new byte[bufferSize];
 		while (remaining > 0) {
-			int read = inputStream.read(buffer, 0, (int) Math.min(Integer.MAX_VALUE, Math.min(bufferSize, remaining)));
+			final int read = inputStream.read(buffer, 0, (int) Math.min(Integer.MAX_VALUE, Math.min(bufferSize, remaining)));
 			if (read == -1) {
 				throw new EOFException();
 			}
@@ -129,5 +129,5 @@ public class StreamCopier {
 			remaining -= read;
 		}
 	}
-
+	
 }

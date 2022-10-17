@@ -37,24 +37,24 @@ import java.io.Writer;
  * @version $Id$
  */
 public abstract class Command {
-
+	
 	/**
 	 * The line feed sequence used by the library.
 	 */
 	static final String LINEFEED = "\r\n";
-
+	
 	/**
 	 * The name of the command. The name is sent to the node so it can not be
 	 * chosen arbitrarily!
 	 */
 	private final String commandName;
-
+	
 	/**
 	 * The identifier of the command. This identifier is used to identify
 	 * replies that are caused by a command.
 	 */
 	private final String identifier;
-
+	
 	/**
 	 * Creates a new command with the specified name and identifier.
 	 *
@@ -65,7 +65,7 @@ public abstract class Command {
 		this.commandName = name;
 		this.identifier = identifier;
 	}
-
+	
 	/**
 	 * Returns the name of this command.
 	 *
@@ -74,7 +74,7 @@ public abstract class Command {
 	public String getCommandName() {
 		return commandName;
 	}
-
+	
 	/**
 	 * Return the identifier of this command.
 	 *
@@ -83,7 +83,7 @@ public abstract class Command {
 	public String getIdentifier() {
 		return identifier;
 	}
-
+	
 	/**
 	 * Writes all parameters to the specified writer.
 	 * <p>
@@ -99,7 +99,7 @@ public abstract class Command {
 			writer.write("Identifier=" + identifier + LINEFEED);
 		}
 	}
-
+	
 	/**
 	 * Returns whether this command has payload to send after the message.
 	 * Subclasses need to return <code>true</code> here if they need to send
@@ -111,7 +111,7 @@ public abstract class Command {
 	protected boolean hasPayload() {
 		return false;
 	}
-
+	
 	/**
 	 * Returns the payload of this command as an {@link InputStream}. This
 	 * method is never called if {@link #hasPayload()} returns
@@ -122,7 +122,7 @@ public abstract class Command {
 	protected InputStream getPayload() {
 		return null;
 	}
-
+	
 	/**
 	 * Returns the length of the payload. This method is never called if
 	 * {@link #hasPayload()} returns <code>false</code>.
@@ -132,5 +132,5 @@ public abstract class Command {
 	protected long getPayloadLength() {
 		return -1;
 	}
-
+	
 }

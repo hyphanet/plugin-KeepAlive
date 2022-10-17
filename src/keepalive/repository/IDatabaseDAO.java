@@ -1,6 +1,6 @@
 /*
- * todesbaum-lib -
- * Copyright (C) 2006 David Roden
+ * Keep Alive Plugin
+ * Copyright (C) 2012 Jeriadoc
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,31 +16,38 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
-package pluginbase.de.todesbaum.util.freenet.fcp2;
-
-import java.util.EventListener;
+package keepalive.repository;
 
 /**
- * Interface for clients that want to be notified when a message was received.
- *
- * @author David Roden &lt;droden@gmail.com&gt;
- * @version $Id$
+ * Interface for a database
  */
-public interface ConnectionListener extends EventListener {
+public interface IDatabaseDAO {
 	
 	/**
-	 * Notifies a client that a message was received.
-	 *
-	 * @param connection The connection the message was received on
-	 * @param message The message that was received
+	 * this method gets called then the plugin starts
 	 */
-	void messageReceived(Connection connection, Message message);
+	default void pluginStart() {}
 	
 	/**
-	 * Notifies a client that the connection to the node has been lost.
-	 *
-	 * @param connection The connection that was lost
+	 * this method gets called then the plugin terminates
 	 */
-	void connectionTerminated(Connection connection);
+	default void pluginTerminate() {}
+	
+	/**
+	 * 
+	 */
+	IDatabaseBlock create(String uri, byte[] data);
+	
+	IDatabaseBlock read(String uri);
+	
+	void update(IDatabaseBlock databaseBlock);
+	
+	void delete(String uri);
+	
+	boolean exist(String uri);
+	
+	long lastAccessDiff(String uri);
+	
+	void lastAccessUpdate(String uri);
 	
 }

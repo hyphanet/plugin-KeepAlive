@@ -25,22 +25,22 @@ package pluginbase.de.todesbaum.util.freenet.fcp2;
  * @version $Id$
  */
 public class Node {
-
+	
 	/**
 	 * The default port of FCPv2.
 	 */
 	public static final int DEFAULT_PORT = 9481;
-
+	
 	/**
 	 * The hostname of the node.
 	 */
 	protected String hostname;
-
+	
 	/**
 	 * The port number of the node.
 	 */
 	protected int port;
-
+	
 	/**
 	 * Creates a new node with the specified hostname and the default port
 	 * number.
@@ -51,7 +51,7 @@ public class Node {
 	public Node(String hostname) {
 		this(hostname, DEFAULT_PORT);
 	}
-
+	
 	/**
 	 * Creates a new node with the specified hostname and port number.
 	 *
@@ -62,7 +62,7 @@ public class Node {
 		this.hostname = hostname;
 		this.port = port;
 	}
-
+	
 	/**
 	 * Returns the hostname of the node.
 	 *
@@ -71,7 +71,7 @@ public class Node {
 	public String getHostname() {
 		return hostname;
 	}
-
+	
 	/**
 	 * Returns the port number of the node.
 	 *
@@ -80,5 +80,5 @@ public class Node {
 	public int getPort() {
 		return port;
 	}
-
+	
 }
