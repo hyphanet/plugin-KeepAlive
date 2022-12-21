@@ -23,13 +23,16 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Properties;
 
 import org.h2.jdbc.JdbcSQLNonTransientException;
 import org.h2.tools.Upgrade;
 
+import freenet.keys.FreenetURI;
 import keepalive.Plugin;
+import keepalive.exceptions.DAOException;
 import keepalive.exceptions.DatabaseException;
 import keepalive.model.PropertiesKey;
 import keepalive.repository.IDatabaseBlock;
@@ -115,94 +118,101 @@ public class H2DatabaseDAO implements IDatabaseDAO {
 	}
 	
 	@Override
-	public IDatabaseBlock create(String uri, byte[] data) {
-		if (exist(uri) || data == null)
-			return null;
+	public IDatabaseBlock create(FreenetURI uri, byte[] data) throws DAOException {
+		if (data == null)
+			throw new DAOException("The data need to be not null!");
+		if (exist(uri))
+			throw new DAOException("The block uri: '%s' is already saved", uri);
 		
 		IDatabaseBlock result = null;
 		
 		try (Connection connection = getConnection();
 				PreparedStatement savePreparedStatement = connection.prepareStatement(SQL_SAVE)) {
-			savePreparedStatement.setString(1, uri);
+			savePreparedStatement.setString(1, uri.toString());
 			savePreparedStatement.setBytes(2, data);
 			savePreparedStatement.executeUpdate();
 			
 			result = new DatabaseBlock(uri, data);
-		} catch (final Exception e) {
-			plugin.log(e.getMessage() + " " + uri, e);
+		} catch (SQLException | DatabaseException e) {
+			throw new DAOException("DatabaseBlock for uri: %s couldnt be created", e, uri);
 		}
 		
 		return result;
 	}
 	
 	@Override
-	public IDatabaseBlock read(String uri) {
-		IDatabaseBlock result = null;
+	public IDatabaseBlock read(FreenetURI uri) throws DAOException {
+		if (uri == null)
+			throw new DAOException("The uri need to be not null!");
 		
+		IDatabaseBlock result = null;
 		try (Connection connection = getConnection();
 				PreparedStatement preparedStatement = connection.prepareStatement(SQL_FIND)) {
-			preparedStatement.setString(1, uri);
+			preparedStatement.setString(1, uri.toString());
 			
 			final ResultSet resultSet = preparedStatement.executeQuery();
 			if (resultSet.next()) {
 				final byte[] data = resultSet.getBytes("data");
 				
-				if (resultSet.next()) {
-					plugin.log("Not unique uri: " + uri);
-					return null;
-				}
+				if (resultSet.next())
+					throw new DAOException("DatabaseBlock for uri: %s is not unique", uri);
 				
 				result = new DatabaseBlock(uri, data);
 			}
-		} catch (final Exception e) {
-			plugin.log(e.getMessage() + " " + uri, e);
+		} catch (SQLException | DatabaseException e) {
+			throw new DAOException("DatabaseBlock for uri: %s couldnt be loaded", e, uri);
 		}
 		
 		return result;
 	}
 	
 	@Override
-	public void update(IDatabaseBlock databaseBlock) {
-		if (databaseBlock == null || !exist(databaseBlock.getUri()))
-			return;
+	public void update(IDatabaseBlock databaseBlock) throws DAOException {
+		if (databaseBlock == null)
+			throw new DAOException("The databaseBlock need to be not null!");
+		if (!exist(databaseBlock.getUri()))
+			throw new DAOException("The databaseBlock uri: '%s' doesnt exist", databaseBlock.getUri());
 		
 		try (Connection connection = getConnection();
 				PreparedStatement updatePreparedStatement = connection.prepareStatement(SQL_UPDATE)) {
 			updatePreparedStatement.setBytes(1, databaseBlock.getData());
-			updatePreparedStatement.setString(2, databaseBlock.getUri());
+			updatePreparedStatement.setString(2, databaseBlock.getUri().toString());
 			updatePreparedStatement.executeUpdate();
-		} catch (final Exception e) {
-			plugin.log(e.getMessage() + " " + databaseBlock.getUri(), e);
+		} catch (SQLException | DatabaseException e) {
+			throw new DAOException("DatabaseBlock for uri: %s couldnt be updated", e, databaseBlock.getUri());
 		}
 	}
 	
 	@Override
-	public void delete(String uri) {
+	public void delete(FreenetURI uri) throws DAOException {
 		if (!exist(uri))
 			return;
 		
 		try (Connection connection = getConnection();
 				PreparedStatement preparedStatement = connection.prepareStatement(SQL_DELETE)) {
-			preparedStatement.setString(1, uri);
+			preparedStatement.setString(1, uri.toString());
 			preparedStatement.executeUpdate();
-		} catch (final Exception e) {
-			plugin.log(e.getMessage() + " " + uri, e);
+		} catch (SQLException | DatabaseException e) {
+			throw new DAOException("DatabaseBlock for uri: %s couldnt be deleted", e, uri);
 		}
 	}
 	
 	@Override
-	public boolean exist(String uri) {
+	public boolean exist(FreenetURI uri) throws DAOException {
 		if (uri == null)
-			return false;
+			throw new DAOException("The uri need to be not null!");
 		
 		return read(uri) != null;
 	}
 	
 	@Override
-	public long lastAccessDiff(String uri) {
+	public long lastAccessDiff(FreenetURI uri) throws DAOException {
+		if (uri == null)
+			throw new DAOException("The uri need to be not null!");
+		
 		try (Connection connection = getConnection();
 				PreparedStatement preparedStatement = connection.prepareStatement(SQL_LAST_ACCESS_DIFF)) {
-			preparedStatement.setString(1, uri);
+			preparedStatement.setString(1, uri.toString());
 			final ResultSet resultSet = preparedStatement.executeQuery();
 			if (!resultSet.next()) {
 				return 0;
@@ -216,20 +226,23 @@ public class H2DatabaseDAO implements IDatabaseDAO {
 			
 			return diff;
 		} catch (final Exception e) {
-			plugin.log(e.getMessage() + " " + uri, e);
+			plugin.log("%s %s", e, e.getMessage(), uri);
 		}
 		
 		return 0;
 	}
 	
 	@Override
-	public void lastAccessUpdate(String uri) {
+	public void lastAccessUpdate(FreenetURI uri) throws DAOException {
+		if (uri == null)
+			throw new DAOException("The uri need to be not null!");
+		
 		try (Connection connection = getConnection();
 				PreparedStatement preparedStatement = connection.prepareStatement(SQL_LAST_ACCESS_UPDATE)) {
-			preparedStatement.setString(1, uri);
+			preparedStatement.setString(1, uri.toString());
 			preparedStatement.executeUpdate();
 		} catch (final Exception e) {
-			plugin.log(e.getMessage() + " " + uri, e);
+			throw new DAOException("lastAccessUpdate error", e);
 		}
 	}
 	

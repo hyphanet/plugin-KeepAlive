@@ -26,17 +26,18 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Stream;
+import java.util.stream.Collectors;
 import java.util.zip.ZipInputStream;
 
 import org.apache.tools.tar.TarInputStream;
@@ -61,6 +62,7 @@ import freenet.support.compress.Compressor.COMPRESSOR_TYPE;
 import freenet.support.io.ArrayBucket;
 import keepalive.Plugin;
 import keepalive.exceptions.DAOException;
+import keepalive.exceptions.DuplicateKeyException;
 import keepalive.exceptions.FetchFailedException;
 import keepalive.model.Block;
 import keepalive.model.IBlock;
@@ -78,89 +80,42 @@ public final class Reinserter extends Thread {
 	private final Plugin plugin;
 	private final IUriValue uriValue;
 	private final CountDownLatch latch;
-	private PluginRespirator pr;
+	private final PluginRespirator pr;
+	private final String logFilename;
+	private final Set<FreenetURI> manifestURIs = new LinkedHashSet<>();
+	private final List<Segment> segments = new ArrayList<>();
 	private long lastActivityTime;
-	private Map<FreenetURI, Metadata> manifestURIs;
-	//private Map<FreenetURI, IBlock> blocks;
 	private int parsedSegmentId;
 	private int parsedBlockId;
-	private final ArrayList<Segment> segments = new ArrayList<>();
 	
 	public Reinserter(Plugin plugin, IUriValue uriValue, CountDownLatch latch) {
 		this.plugin = plugin;
 		this.uriValue = uriValue;
 		this.latch = latch;
 		this.setName(Plugin.PLUGIN_NAME + " ReInserter " + uriValue.getUriId());
+		this.pr = plugin.pluginContext.pluginRespirator;
+		this.logFilename = plugin.getLogFilename(uriValue);
 	}
 	
 	@Override
 	public void run() {
 		final int siteId = uriValue.getUriId();
+		FreenetURI uri = uriValue.getUri();
 		
 		try {
 			// init
-			pr = plugin.pluginContext.pluginRespirator;
-			manifestURIs = new HashMap<>();
-			//blocks = new HashMap<>();
-			final String rawUri = uriValue.getUriString();
-			
-			plugin.log("start reinserter for site " + rawUri + " (" + siteId + ")", 1);
-			plugin.clearLog(plugin.getLogFilename(uriValue));
+			plugin.logF(String.format("start reinserter for site %s (%s)", uri, siteId), 1);
+			plugin.clearLog(logFilename);
 			isActive(true);
 			long startedAt = System.currentTimeMillis();
 			long timeLeft = TimeUnit.HOURS.toMillis(plugin.getIntProp(PropertiesKey.SINGLE_URL_TIMESLOT));
 			
-			FreenetURI uri = new FreenetURI(rawUri);
-			
 			// update if USK
-			if (uri.isUSK()) {
-				final FreenetURI newUri = updateUsk(uri);
-				if (newUri != null && !newUri.equals(uri)) {
-					plugin.log("received new uri: " + newUri, 1);
-					if (plugin.uriPropsDAO.exist(newUri)) {
-						plugin.log("remove uri as duplicate: " + newUri, 1);
-						plugin.removeUriAndFiles(uriValue);
-						return;
-					}
-					
-					uriValue.setUri(newUri);
-					uriValue.setBlockCount(-1);
-					plugin.uriPropsDAO.update(uriValue);
-					
-					uri = newUri;
-				}
-			}
+			if (uri.isUSK())
+				uri = getNewUsk(uri);
 			
 			// check top block availability
-			final FreenetURI topBlockUri = Client.normalizeUri(uri.clone());
-			if (plugin.databaseDAO.lastAccessDiff(topBlockUri.toString()) > TimeUnit.DAYS.toMillis(1)) {
-				try {
-					Client.fetch(topBlockUri, plugin.getFreenetClient());
-				} catch (final FetchException e) {
-					log(e.getShortMessage(), 0, 0);
-					try {
-						FreenetURI insertUri = null;
-						
-						final IDatabaseBlock databaseBlock = plugin.databaseDAO.read(topBlockUri.toString());
-						if (databaseBlock != null) {
-							insertUri = Client.insert(topBlockUri, databaseBlock.getData(), plugin.getFreenetClient());
-						}
-						
-						if (insertUri != null) {
-							if (topBlockUri.equals(insertUri)) {
-								log("Successfully inserted top block: " + insertUri.toString(), 0);
-							} else {
-								log("Top block insertion failed - different uri: " + insertUri.toString(), 0);
-							}
-						} else {
-							log("Top block insertion failed (insertUri = null)", 0);
-						}
-					} catch (final InsertException e1) {
-						log(e1.getMessage(), 0, 0);
-					}
-				}
-				plugin.databaseDAO.lastAccessUpdate(topBlockUri.toString());
-			}
+			checkTopBlockAndRepair(uri);
 			
 			// register uri
 			registerManifestUri(uri, -1);
@@ -168,7 +123,6 @@ public final class Reinserter extends Thread {
 			// load list of keys (if exists)
 			// skip if 1 because the manifest failed to fetch before.
 			final int numBlocks = uriValue.getBlockCount();
-			plugin.log("numBlocks Check: %s", (Object) numBlocks);
 			if (numBlocks > 1) {
 				log("*** loading list of blocks ***", 0, 0);
 			} else {
@@ -176,47 +130,44 @@ public final class Reinserter extends Thread {
 				log("*** parsing data structure ***", 0, 0);
 				parsedSegmentId = -1;
 				parsedBlockId = -1;
-				while (manifestURIs.size() > 0) {
-					if (isInterrupted()) {
+				
+				while (!manifestURIs.isEmpty()) {
+					if (isInterrupted())
 						return;
-					}
 					
 					if (!isActive()) {
 						plugin.log("Stop after stuck state (metadata)", 0);
 						return;
 					}
 					
-					uri = (FreenetURI) manifestURIs.keySet().toArray()[0];
-					log(uri.toString(), 0);
+					final FreenetURI manifestUri = manifestURIs.iterator().next();
+					log(manifestUri.toString(), 0);
+					
 					try {
-						parseMetadata(uri, null, 0);
+						parseMetadata(manifestUri, null, 0);
 					} catch (final FetchFailedException e) {
 						log(e.getMessage(), 0);
 						return;
 					}
-					manifestURIs.remove(uri);
+					
+					manifestURIs.remove(manifestUri);
 				}
 				
 				if (isInterrupted()) {
 					return;
 				}
 				
-				plugin.log("Block update: Count: %s | Blocks: %s", uriValue.getBlockCount(), uriValue.getBlocks().size());
 				plugin.uriPropsDAO.update(uriValue);
 			}
 			
 			// max segment id
-			int maxSegmentId = -1;
-			for (final IBlock block : uriValue.getBlocks().values()) {
-				maxSegmentId = Math.max(maxSegmentId, block.getSegmentId());
-			}
+			final int maxSegmentId = uriValue.getBlocks().values().stream().mapToInt(IBlock::getSegmentId).max().orElse(-1);
 			
 			// init reinsertion
-			if (uriValue.getSegment() == maxSegmentId) {
+			if (uriValue.getSegment() == maxSegmentId)
 				uriValue.setSegment(-1);
-			}
+			
 			if (uriValue.getSegment() == -1) {
-				
 				log("*** starting reinsertion ***", 0, 0);
 				
 				// reset success counter
@@ -231,10 +182,9 @@ public final class Reinserter extends Thread {
 				}
 				uriValue.setSuccess(success.toString());
 				uriValue.setSuccessSegments(segmentsSuccess.toString());
+				
 				plugin.uriPropsDAO.update(uriValue);
-				
 			} else {
-				
 				log("*** continuing reinsertion ***", 0, 0);
 				
 				// add dummy segments
@@ -247,8 +197,8 @@ public final class Reinserter extends Thread {
 				for (int i = (uriValue.getSegment() + 1) * 2; i < successProp.length; i++) {
 					successProp[i] = "0";
 				}
-				saveSuccessToProp(successProp);
 				
+				saveSuccessToProp(successProp);
 			}
 			
 			// start reinsertion
@@ -558,8 +508,10 @@ public final class Reinserter extends Thread {
 			}
 			
 			log("*** reinsertion finished ***", 0, 0);
-			plugin.log("reinsertion finished for " + uriValue.getUriString(), 1);
-			
+			plugin.log("reinsertion finished for " + uriValue.getUri().toString(), 1);
+		} catch (final DuplicateKeyException e) {
+			// if getNewUsk find a new url and this is a duplicate
+			return;
 		} catch (final Exception e) {
 			plugin.log("Reinserter.run()", e);
 		} finally {
@@ -569,29 +521,98 @@ public final class Reinserter extends Thread {
 		}
 	}
 	
+	/**
+	 * Checks for a new USK key edition and returns the key
+	 */
+	private FreenetURI getNewUsk(FreenetURI uri) throws DAOException, DuplicateKeyException {
+		if (uri == null)
+			return null;
+		
+		final FreenetURI newUri = updateUsk(uri);
+		if (newUri != null && !newUri.equals(uri)) {
+			plugin.log(String.format("received new uri: %s", newUri), 1);
+			
+			// new usk already exists, delete the old
+			if (plugin.uriPropsDAO.exist(newUri)) {
+				plugin.log(String.format("remove uri as duplicate: %s", newUri), 1);
+				plugin.removeUriAndFiles(uriValue);
+				throw new DuplicateKeyException();
+			}
+			
+			uriValue.setUri(newUri);
+			uriValue.setBlockCount(-1);
+			plugin.uriPropsDAO.update(uriValue);
+			
+			return newUri;
+		}
+		
+		return uri;
+	}
+	
+	/**
+	 * Every day this methode checks if the top block is fetchable.
+	 * If it cant be fetched, it tries to insert it again.
+	 */
+	private void checkTopBlockAndRepair(FreenetURI uri) throws DAOException {
+		// get url without any meta informations or ssk key with minus edition
+		final FreenetURI topBlockUri = Client.normalizeUri(uri.clone());
+		
+		// check only every day
+		if (plugin.databaseDAO.lastAccessDiff(topBlockUri) <= TimeUnit.DAYS.toMillis(1))
+			return;
+		
+		try {
+			Client.fetch(topBlockUri, plugin.getFreenetClient());
+		} catch (final FetchException e) {
+			log(e.getShortMessage(), 0, 0);
+			
+			try {
+				// there was a problem fetching the top block, so we try to insert it again
+				final IDatabaseBlock databaseBlock = plugin.databaseDAO.read(topBlockUri);
+				FreenetURI insertUri = null;
+				if (databaseBlock != null) {
+					insertUri = Client.insert(topBlockUri, databaseBlock.getData(), plugin.getFreenetClient());
+					
+					if (insertUri != null) {
+						if (topBlockUri.equals(insertUri)) {
+							log("Successfully inserted top block: " + insertUri.toString(), 0);
+						} else {
+							log("Top block insertion failed - different uri: " + insertUri.toString(), 0);
+						}
+					} else {
+						log("Top block insertion failed (insertUri = null)", 0);
+					}
+				} else {
+					log("Top block insertion failed (no saved block)", 0);
+				}
+			} catch (final InsertException e1) {
+				log(e1.getMessage(), 0, 0);
+			}
+		}
+		
+		plugin.databaseDAO.lastAccessUpdate(topBlockUri);
+	}
+	
 	private FetchBlocksResult fetchBlocks(List<IBlock> requestedBlocks, Segment segment) {
 		final ExecutorService executor = Executors.newFixedThreadPool(plugin.getIntProp(PropertiesKey.POWER));
+		
 		final FetchBlocksResult fetchBlocksResult = new FetchBlocksResult();
 		try {
-			Stream<Future<Boolean>> futures = requestedBlocks.stream().map(requestedBlock -> executor.submit(new SingleFetch(this, requestedBlock, true)));
+			final List<SingleFetch> tasks = requestedBlocks.stream().map(requestedBlock -> new SingleFetch(this, requestedBlock)).collect(Collectors.toList());
+			final List<Future<Boolean>> results = executor.invokeAll(tasks, 1, TimeUnit.HOURS);
+			for (final Future<Boolean> future : results)
+				fetchBlocksResult.addResult(future.get());
+			
 			executor.shutdown();
 			final boolean done = executor.awaitTermination(1, TimeUnit.HOURS);
 			if (!done) {
 				log(segment, "<b>availability check failed</b>", 0);
-				return null;
+				return fetchBlocksResult;
 			}
-			
-			futures.forEach(x -> {
-				try {
-					fetchBlocksResult.addResult(x.get());
-				} catch (InterruptedException | ExecutionException e) {
-					fetchBlocksResult.addResult(false);
-					plugin.log("Reinserter.fetchBlocks(): " + e.getMessage(), e);
-				}
-			});
 		} catch (final InterruptedException e) {
 			Thread.currentThread().interrupt();
-			return null;
+		} catch (final ExecutionException e) {
+			plugin.log("Error fetchBlocks", e);
 		} finally {
 			if (!executor.isShutdown())
 				executor.shutdownNow();
@@ -599,7 +620,7 @@ public final class Reinserter extends Thread {
 		
 		return fetchBlocksResult;
 	}
-
+	
 	private void checkFinishedSegments() throws DAOException {
 		int segment;
 		while ((segment = uriValue.getSegment()) < segments.size() - 1) {
@@ -613,7 +634,7 @@ public final class Reinserter extends Thread {
 	}
 	
 	private void parseMetadata(FreenetURI uri, Metadata metadata, int level)
-			throws FetchFailedException, MetadataParseException, FetchException, IOException {
+			throws FetchFailedException, MetadataParseException, FetchException, IOException, DAOException {
 		if (isInterrupted()) {
 			return;
 		}
@@ -625,9 +646,9 @@ public final class Reinserter extends Thread {
 		if (metadata == null) {
 			final FetchResult fetchResult = Client.fetch(uri, plugin.getFreenetClient());
 			
-			final IDatabaseBlock databaseBlock = plugin.databaseDAO.read(uri.toString());
+			final IDatabaseBlock databaseBlock = plugin.databaseDAO.read(uri);
 			if (databaseBlock == null) {
-				plugin.databaseDAO.create(uri.toString(), fetchResult.asByteArray());
+				plugin.databaseDAO.create(uri, fetchResult.asByteArray());
 			} else {
 				databaseBlock.setData(fetchResult.asByteArray());
 				plugin.databaseDAO.update(databaseBlock);
@@ -900,15 +921,18 @@ public final class Reinserter extends Thread {
 		return uri;
 	}
 	
+	/**
+	 * Checks if a uri is already registered as manifest
+	 */
 	private void registerManifestUri(FreenetURI uri, int level) {
-		uri = Client.normalizeUri(uri);
-		if (manifestURIs.containsKey(uri)) {
+		// get url without any meta informations or ssk key with minus edition
+		final FreenetURI normalizeUri = Client.normalizeUri(uri.clone());
+		if (manifestURIs.contains(normalizeUri)) {
 			log("-> already registered manifest", level, 2);
 		} else {
-			manifestURIs.put(uri, null);
-			if (level != -1) {
+			manifestURIs.add(normalizeUri);
+			if (level != -1)
 				log("-> registered manifest", level, 2);
-			}
 		}
 	}
 	
@@ -1010,7 +1034,7 @@ public final class Reinserter extends Thread {
 			}
 		} catch (final Exception ex) {/* ignore */}
 		
-		plugin.logFile(plugin.getLogFilename(uriValue), buf.append(message).toString(), logLevel);
+		plugin.logFile(logFilename, buf.append(message).toString(), logLevel);
 	}
 	
 	public void log(Segment segment, String message, int level, int logLevel) {

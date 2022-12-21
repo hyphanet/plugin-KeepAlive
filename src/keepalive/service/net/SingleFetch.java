@@ -27,26 +27,43 @@ import freenet.keys.FreenetURI;
 import freenet.support.io.ArrayBucket;
 import keepalive.Plugin;
 import keepalive.model.IBlock;
+import keepalive.service.reinserter.FetchBlocksResult;
 import keepalive.service.reinserter.Reinserter;
 
 public class SingleFetch extends SingleJob implements Callable<Boolean> {
 	
-	private final boolean persistenceCheck;
+	private boolean persistenceCheck;
+	private FetchBlocksResult fetchBlocksResult;
 	
-	public SingleFetch(Reinserter reinserter, IBlock block, boolean persistenceCheck) {
+	public SingleFetch(Reinserter reinserter, IBlock block) {
 		super(reinserter, "fetch", block);
 		
-		this.persistenceCheck = persistenceCheck;
+		this.persistenceCheck = false;
+	}
+	
+	public SingleFetch(Reinserter reinserter, IBlock block, FetchBlocksResult fetchBlocksResult) {
+		this(reinserter, block);
+		
+		this.persistenceCheck = true;
+		this.fetchBlocksResult = fetchBlocksResult;
 	}
 	
 	@Override
 	public Boolean call() {
+		final Boolean result = fetch();
+		
+		if (fetchBlocksResult != null)
+			fetchBlocksResult.addResult(result);
+		
+		return result;
+	}
+	
+	public Boolean fetch() {
 		Thread.currentThread().setName(Plugin.PLUGIN_NAME + " SingleFetch");
 		FetchResult fetchResult = null;
 		boolean fetchSuccessful = false;
 		
 		try {
-			
 			// init
 			final HLSCIgnoreStore hlscIgnoreStore = HLSCIgnoreStore.getInstance(plugin.getFreenetClient());
 			
@@ -62,7 +79,7 @@ public class SingleFetch extends SingleJob implements Callable<Boolean> {
 					fetchResult = hlscIgnoreStore.fetch(fetchUri);
 				}
 			} catch (final FetchException e) {
-				block.setResultLog("-> fetch error: " + e.getMessage());
+				block.setResultLog("error: " + e.getMessage());
 			}
 			
 			if (Thread.currentThread().isInterrupted()) {
@@ -72,11 +89,11 @@ public class SingleFetch extends SingleJob implements Callable<Boolean> {
 			// log / success flag
 			if (block.getResultLog() == null) {
 				if (fetchResult == null) {
-					block.setResultLog("-> fetch failed");
+					block.setResultLog("failed");
 				} else {
 					block.setBucket(new ArrayBucket(fetchResult.asByteArray()));
 					block.setFetchSuccessful(true);
-					block.setResultLog("-> fetch successful");
+					block.setResultLog("successful");
 					fetchSuccessful = true;
 				}
 			}
@@ -84,7 +101,6 @@ public class SingleFetch extends SingleJob implements Callable<Boolean> {
 			//finish
 			reinserter.registerBlockFetchSuccess(block);
 			block.setFetchDone(true);
-			
 		} catch (final IOException e) {
 			log("SingleFetch.run(): " + e.getMessage(), 0);
 		} finally {

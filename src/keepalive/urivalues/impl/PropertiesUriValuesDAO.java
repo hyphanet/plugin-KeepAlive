@@ -47,7 +47,7 @@ public class PropertiesUriValuesDAO implements IUriValuesDAO {
 		final IUriValue uriProps = new UriValue(getNewUriId(), uri);
 		final int uriId = uriProps.getUriId();
 		
-		setProp(PropertiesKey.URI, uriId, uriProps.getUriString());
+		setProp(PropertiesKey.URI, uriId, uriProps.getUri().toString());
 		setIntProp(PropertiesKey.BLOCKS, uriId, uriProps.getBlockCount());
 		setProp(PropertiesKey.SUCCESS, uriId, uriProps.getSuccess());
 		setIntProp(PropertiesKey.SEGMENT, uriId, uriProps.getSegment());
@@ -67,7 +67,7 @@ public class PropertiesUriValuesDAO implements IUriValuesDAO {
 		try {
 			final UriValue uriValue = new UriValue(uriId);
 			
-			uriValue.setUriString(getProp(PropertiesKey.URI, uriId));
+			uriValue.setUri(new FreenetURI(getProp(PropertiesKey.URI, uriId)));
 			uriValue.setBlockCount(getIntProp(PropertiesKey.BLOCKS, uriId));
 			loadBlockUris(uriValue);
 			uriValue.setSuccessSegments(getProp(PropertiesKey.SUCCESS_SEGMENTS, uriId));
@@ -87,12 +87,11 @@ public class PropertiesUriValuesDAO implements IUriValuesDAO {
 	public void update(IUriValue uriValue) throws DAOException {
 		if (uriValue == null)
 			throw new DAOException("The uriValue need to be not null!");
-		
 		if (!exist(uriValue.getUri()))
 			throw new DAOException("The uri: '%s' doesnt exist", uriValue.getUri());
 		
 		final int uriId = uriValue.getUriId();
-		setProp(PropertiesKey.URI, uriId, uriValue.getUriString());
+		setProp(PropertiesKey.URI, uriId, uriValue.getUri().toString());
 		saveBlockUris(uriValue);
 		setIntProp(PropertiesKey.BLOCKS, uriId, uriValue.getBlocks().size() > 0 ? uriValue.getBlocks().size() : uriValue.getBlockCount());
 		setProp(PropertiesKey.SUCCESS_SEGMENTS, uriId, uriValue.getSuccessSegments());
@@ -139,7 +138,7 @@ public class PropertiesUriValuesDAO implements IUriValuesDAO {
 	public List<IUriValue> getAll() throws DAOException {
 		return getAllUriIds().parallelStream()
 				.map(this::readUnchecked)
-				.filter(x -> x != null && x.getUriString() != null)
+				.filter(x -> x != null && x.getUri() != null)
 				.collect(Collectors.toList());
 	}
 	
@@ -195,7 +194,7 @@ public class PropertiesUriValuesDAO implements IUriValuesDAO {
 		final List<String> content = uriValue.getBlocks().values().stream().map(this::convertLine).collect(Collectors.toList());
 		
 		try {
-			OpenOption openOption = Files.exists(fileName) ? StandardOpenOption.WRITE : StandardOpenOption.CREATE;
+			final OpenOption openOption = Files.exists(fileName) ? StandardOpenOption.WRITE : StandardOpenOption.CREATE;
 			Files.write(fileName, content, StandardCharsets.UTF_8, openOption, StandardOpenOption.TRUNCATE_EXISTING);
 		} catch (final Exception e) {
 			throw new DAOException("Error saving blocks for: %s", e, uriValue.getUri());
@@ -217,12 +216,12 @@ public class PropertiesUriValuesDAO implements IUriValuesDAO {
 			throw new DAOException("Error loading blocks for: %s", e, uriValue.getUri());
 		}
 	}
-
+	
 	private String convertLine(IBlock block) {
 		final String type = block.isDataBlock() ? "d" : "c";
-		String msg = String.format("%s#%s#%s#%s", block.getUri(), block.getSegmentId(), block.getId(), type);
+		final String msg = String.format("%s#%s#%s#%s", block.getUri(), block.getSegmentId(), block.getId(), type);
 		if (msg.startsWith("HK"))
-			plugin.log("convertLine: %s | %s", block.getUri(), msg);
+			plugin.logF("convertLine: %s | %s", block.getUri(), msg);
 		return msg;
 	}
 	

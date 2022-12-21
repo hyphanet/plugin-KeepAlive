@@ -364,7 +364,7 @@ public abstract class PluginBase implements FredPlugin, FredPluginThreadless,
 		logFile("log.txt", cText, 0);
 	}
 	
-	public void log(String cText, Object... args) {
+	public void logF(String cText, Object... args) {
 		logFile("log.txt", String.format(cText, args), 0);
 	}
 	

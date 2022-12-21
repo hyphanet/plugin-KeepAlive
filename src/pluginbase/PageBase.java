@@ -252,7 +252,7 @@ public abstract class PageBase extends Toadlet implements FredPluginL10n {
 	}
 	
 	public void log(String strText, Object... args) {
-		plugin.log(strText, args);
+		plugin.logF(strText, args);
 	}
 	
 	// methods to add this page to the plugins' menu (fproxy)

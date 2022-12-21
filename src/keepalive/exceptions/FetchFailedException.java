@@ -2,7 +2,7 @@ package keepalive.exceptions;
 
 public class FetchFailedException extends Exception {
 	
-	private static final long serialVersionUID = 3559707685208595270L;
+	private static final long serialVersionUID = -1746833000014867257L;
 	
 	public FetchFailedException() {}
 	

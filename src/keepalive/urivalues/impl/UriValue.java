@@ -1,6 +1,5 @@
 package keepalive.urivalues.impl;
 
-import java.net.MalformedURLException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -20,8 +19,6 @@ public class UriValue implements IUriValue {
 	
 	/** the freenet uri */
 	private FreenetURI uri = null;
-	/** the short freenet uri for html display */
-	private String shortUri = "";
 	/** block count or -1 if its need to be fetched */
 	private int blockCount = -1;
 	/** TODO */
@@ -57,32 +54,6 @@ public class UriValue implements IUriValue {
 	@Override
 	public void setUri(FreenetURI uri) {
 		this.uri = uri;
-		
-		final String uriString = getUriString();
-		if (uriString.length() > 80)
-			this.shortUri = uriString.substring(0, 20) + "...." + uriString.substring(uriString.length() - 50);
-		else
-			this.shortUri = uriString;
-	}
-	
-	@Override
-	public String getUriString() {
-		return uri != null ? uri.toString() : null;
-	}
-	
-	@Override
-	public void setUriString(String uri) throws MalformedURLException {
-		setUri(new FreenetURI(uri));
-	}
-	
-	@Override
-	public String getShortUri() {
-		return shortUri;
-	}
-	
-	@Override
-	public void setShortUri(String shortUri) {
-		this.shortUri = shortUri;
 	}
 	
 	@Override
@@ -147,13 +118,13 @@ public class UriValue implements IUriValue {
 	
 	@Override
 	public String toString() {
-		return String.format("UriValue [uriId=%s, uri=%s, shortUri=%s, blockCount=%s, blocks=%s, successSegments=%s, success=%s, history=%s, segment=%s]", uriId, uri, shortUri, blockCount, blocks,
-				successSegments, success, history, segment);
+		return String.format("UriValue [uriId=%s, uri=%s, blockCount=%s, blocks=%s, successSegments=%s, success=%s, history=%s, segment=%s]", uriId, uri, blockCount, blocks, successSegments, success,
+				history, segment);
 	}
 	
 	@Override
 	public int hashCode() {
-		return Objects.hash(blockCount, blocks, history, segment, shortUri, success, successSegments, uri, uriId);
+		return Objects.hash(blockCount, blocks, history, segment, success, successSegments, uri, uriId);
 	}
 	
 	@Override
@@ -163,8 +134,8 @@ public class UriValue implements IUriValue {
 		if ((obj == null) || (getClass() != obj.getClass()))
 			return false;
 		final UriValue other = (UriValue) obj;
-		return blockCount == other.blockCount && Objects.equals(blocks, other.blocks) && Objects.equals(history, other.history) && segment == other.segment && Objects.equals(shortUri, other.shortUri)
-				&& Objects.equals(success, other.success) && Objects.equals(successSegments, other.successSegments) && Objects.equals(uri, other.uri) && uriId == other.uriId;
+		return blockCount == other.blockCount && Objects.equals(blocks, other.blocks) && Objects.equals(history, other.history) && segment == other.segment && Objects.equals(success, other.success)
+				&& Objects.equals(successSegments, other.successSegments) && Objects.equals(uri, other.uri) && uriId == other.uriId;
 	}
 	
 }

@@ -221,7 +221,7 @@ public class AdminPage extends PageBase {
 				.append("</tr>");
 		
 		for (final IUriValue uriValue : uriValues) {
-			final String uri = uriValue.getUriString();
+			final String uri = uriValue.getUri().toString();
 			
 			final SuccessValues successValues = ownPlugin.getSuccessValues(uriValue);
 			final int success = successValues.getSuccess();
@@ -294,7 +294,7 @@ public class AdminPage extends PageBase {
 				if (zeroBlockSites.length() > 0)
 					zeroBlockSites.append("<br>");
 				
-				zeroBlockSites.append(uriValue.getUriString());
+				zeroBlockSites.append(uriValue.getUri().toString());
 			}
 		}
 		
@@ -333,9 +333,10 @@ public class AdminPage extends PageBase {
 		final IUriValue uriValue = ownPlugin.uriPropsDAO.read(getIntParam(UiKey.REMOVE));
 		if (uriValue != null)
 			ownPlugin.removeUriAndFiles(uriValue);
+		
+		ownPlugin.saveProp(true);
 	}
 	
-	// TODO: test this
 	private void removeWithRegex() throws Exception {
 		final String regex = getParam(UiKey.REMOVE_REGEX);
 		if (regex == null || regex.trim().isEmpty()) {
@@ -345,7 +346,7 @@ public class AdminPage extends PageBase {
 		
 		for (final IUriValue uriValue : ownPlugin.uriPropsDAO.getAll()) {
 			try {
-				final String uri = uriValue.getUriString();
+				final String uri = uriValue.getUri().toString();
 				if (uri.matches(regex)) {
 					ownPlugin.removeUriAndFiles(uriValue);
 				}
@@ -353,12 +354,15 @@ public class AdminPage extends PageBase {
 				log("AdminPage.removeWithRegex(): " + e.getMessage());
 			}
 		}
+		
+		ownPlugin.saveProp(true);
 	}
 	
 	private void removeAllUris() throws DAOException {
-		for (final IUriValue uriValue : ownPlugin.uriPropsDAO.getAll()) {
+		for (final IUriValue uriValue : ownPlugin.uriPropsDAO.getAll())
 			ownPlugin.removeUriAndFiles(uriValue);
-		}
+		
+		ownPlugin.saveProp(true);
 	}
 	
 	private void setIntPropByParam(PropertiesKey cPropName, int nMinValue) {

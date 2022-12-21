@@ -68,11 +68,10 @@ public class Plugin extends PluginBase {
 		try {
 			hlsc = (HighLevelSimpleClientImpl) pluginContext.node.clientCore.makeClient((short) 5, false, true);
 			
-			// old 0.2 to 0.3 update
-			updateProperties();
-			
 			// initialize all common property keys with its default value
 			initPropKeys();
+			
+			updateProperties();
 			
 			// db migration
 			this.databaseDAO.pluginStart();
@@ -91,7 +90,6 @@ public class Plugin extends PluginBase {
 			if (activeProp != -1) {
 				startReinserter(activeProp);
 			}
-			
 		} catch (final Exception e) {
 			log("Plugin.runPlugin Exception: " + e.getMessage(), 0);
 		}
@@ -99,7 +97,7 @@ public class Plugin extends PluginBase {
 	
 	private void updateProperties() throws DAOException {
 		// migrate from 0.2 to 0.3
-		if (getProp(PropertiesKey.VERSION) == null || !"0.3".equals(getProp(PropertiesKey.VERSION).substring(0, 3))) {
+		if (getProp(PropertiesKey.VERSION) != null && "0.2".equals(getProp(PropertiesKey.VERSION).substring(0, 3))) {
 			for (final IUriValue uriValue : uriPropsDAO.getAll()) {
 				// remove boost params
 				removeProp("boost_" + uriValue.getUriId());
@@ -110,6 +108,22 @@ public class Plugin extends PluginBase {
 			}
 			
 			setProp(PropertiesKey.VERSION, VERSION);
+			saveProp(true);
+		}
+		
+		// rewrite update
+		if ("0.3.3.11-RW".equals(getProp(PropertiesKey.VERSION))) {
+			setProp(PropertiesKey.DB_VERSION, "199");
+			setProp(PropertiesKey.VERSION, VERSION);
+			saveProp(true);
+			return;
+		}
+		
+		// new install
+		if (getProp(PropertiesKey.VERSION) == null) {
+			setProp(PropertiesKey.DB_VERSION, "206");
+			setProp(PropertiesKey.VERSION, VERSION);
+			saveProp(true);
 		}
 	}
 	
@@ -229,12 +243,16 @@ public class Plugin extends PluginBase {
 		return String.format("log%s.txt", uriValue.getUriId());
 	}
 	
-	@Override
-	public synchronized void saveProp() {
-		if (propSavingTimestamp < System.currentTimeMillis() - 10 * 1000) {
+	public synchronized void saveProp(boolean force) {
+		if (force || propSavingTimestamp < System.currentTimeMillis() - 10 * 1000) {
 			super.saveProp();
 			propSavingTimestamp = System.currentTimeMillis();
 		}
+	}
+	
+	@Override
+	public void saveProp() {
+		saveProp(false);
 	}
 	
 	@Override
@@ -260,12 +278,13 @@ public class Plugin extends PluginBase {
 		// remove log files
 		final File file = new File(getPluginDirectory() + getLogFilename(uriValue));
 		if (file.exists() && !file.delete()) {
-			log("Plugin.removeUri(): remove log files was not successful.", 1);
+			log("Plugin.removeUriAndFiles(): remove log files was not successful.", 1);
+			return;
 		}
 		
 		try {
 			// remove top block from db
-			databaseDAO.delete(uriValue.getUriString());
+			databaseDAO.delete(uriValue.getUri());
 			
 			// remove items
 			uriPropsDAO.delete(uriValue.getUriId());
@@ -278,11 +297,10 @@ public class Plugin extends PluginBase {
 	 * initialize all common property keys with its default value
 	 */
 	private void initPropKeys() {
-		for (final PropertiesKey key : PropertiesKey.values()) {
+		for (final PropertiesKey key : PropertiesKey.values())
 			initPropKey(key);
-		}
 		
-		saveProp();
+		saveProp(true);
 	}
 	
 	/**

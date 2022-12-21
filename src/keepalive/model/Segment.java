@@ -109,7 +109,7 @@ public class Segment {
 			if (size == 1) {
 				finished = getBlock(0).isInsertDone();
 			} else {
-				for (IBlock block : blocks) {
+				for (final IBlock block : blocks) {
 					if (block != null && !block.isFetchSuccessful() && !block.isInsertDone()) {
 						finished = false;
 						break;
@@ -120,8 +120,8 @@ public class Segment {
 		
 		// free blocks (especially buckets)
 		if (finished) {
-			for (IBlock block : blocks) {
-				if (block != null)
+			for (final IBlock block : blocks) {
+				if (block != null && block.getBucket() != null)
 					block.getBucket().free();
 			}
 			blocks = null;

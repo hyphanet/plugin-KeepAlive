@@ -28,22 +28,22 @@ public abstract class SingleJob {
 	
 	public static final int MAX_LIFETIME = 30;
 	
-	Plugin plugin;
-	Reinserter reinserter;
-	IBlock block;
-	byte[] uriExtra;
-	String compressionAlgorithm;
+	protected Plugin plugin;
+	protected Reinserter reinserter;
+	protected IBlock block;
+	protected byte[] uriExtra;
+	protected String compressionAlgorithm;
 	
 	private final String jobType;
 	
-	SingleJob(Reinserter reinserter, String jobType, IBlock block) {
+	protected SingleJob(Reinserter reinserter, String jobType, IBlock block) {
 		this.reinserter = reinserter;
 		this.jobType = jobType;
 		this.block = block;
 		this.plugin = reinserter.getPlugin();
 	}
 	
-	FreenetURI getUri() {
+	protected FreenetURI getUri() {
 		final FreenetURI uri = block.getUri().clone();
 		
 		// modify the control flag of the URI to get always the raw data
@@ -57,24 +57,20 @@ public abstract class SingleJob {
 			compressionAlgorithm = "none";
 		}
 		
-		log("request: " + block.getUri().toString() +
-				" (crypt=" + uriExtra[1] +
-				",control=" + block.getUri().getExtra()[2] +
-				",compress=" + uriExtra[4] + "=" + compressionAlgorithm + ")", 2);
+		log(String.format("request: %s (crypt=%s,control=%s,compress=%s=%s)", block.getUri(), uriExtra[1], block.getUri().getExtra()[2], uriExtra[4], compressionAlgorithm), 2);
 		
 		return uri;
 	}
 	
-	void finish() {
+	protected void finish() {
 		if (reinserter.isActive() && !reinserter.isInterrupted()) {
-			// log
-			String firstLog = jobType + ": " + block.getUri();
-			if (!block.isFetchSuccessful() && !block.isInsertSuccessful()) {
-				firstLog = "<b>" + firstLog + "</b>";
-				block.setResultLog("<b>" + block.getResultLog() + "</b>");
-			}
-			log(firstLog);
-			log(block.getResultLog());
+			String msg = String.format("%s: %s -> %s", jobType, block.getResultLog(), block.getUri());
+			
+			// error or problem
+			if (!block.isFetchSuccessful() && !block.isInsertSuccessful())
+				msg = String.format("<b>%s</b>", msg);
+			
+			log(msg);
 		}
 	}
 	

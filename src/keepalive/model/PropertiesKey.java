@@ -18,8 +18,6 @@
  */
 package keepalive.model;
 
-import keepalive.Plugin;
-
 /**
  * enum for all property keys with default values<br>
  * they get automatically initialised
@@ -27,8 +25,8 @@ import keepalive.Plugin;
 public enum PropertiesKey {
 	
 	// common properties
-	DB_VERSION("db_version", "199"),
-	VERSION("version", Plugin.VERSION),
+	DB_VERSION("db_version"), //, "199"
+	VERSION("version"), //, Plugin.VERSION
 	LOGLEVEL("loglevel", 1),
 	IDS("ids", ""),
 	POWER("power", 6),

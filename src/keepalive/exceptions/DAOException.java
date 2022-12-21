@@ -2,7 +2,7 @@ package keepalive.exceptions;
 
 public class DAOException extends Exception {
 	
-	private static final long serialVersionUID = 3156450661722048683L;
+	private static final long serialVersionUID = 87724461226632647L;
 	
 	public DAOException() {}
 	

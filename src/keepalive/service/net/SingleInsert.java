@@ -49,7 +49,7 @@ public class SingleInsert extends SingleJob implements Runnable {
 		try {
 			// fetch
 			if (block.getBucket() == null) {
-				final SingleFetch singleFetch = new SingleFetch(reinserter, block, false);
+				final SingleFetch singleFetch = new SingleFetch(reinserter, block);
 				singleFetch.call();
 				if (!reinserter.isActive()) {
 					return;
@@ -59,7 +59,7 @@ public class SingleInsert extends SingleJob implements Runnable {
 			final Segment segment = reinserter.getSegments().get(block.getSegmentId());
 			
 			if (block.getBucket() == null) {
-				block.setResultLog("-> insertion failed: fetch failed");
+				block.setResultLog("failed: fetch failed");
 			} else { // insert
 				if (Thread.currentThread().isInterrupted()) {
 					return;
@@ -96,16 +96,16 @@ public class SingleInsert extends SingleJob implements Runnable {
 					if (insertUri != null) {
 						if (fetchUri.equals(insertUri)) {
 							block.setInsertSuccessful(true);
-							block.setResultLog("-> inserted: " + insertUri.toString());
+							block.setResultLog("inserted: " + insertUri.toString());
 						} else {
-							block.setResultLog("-> insertion failed - different uri: " + insertUri.toString());
+							block.setResultLog("failed - different uri: " + insertUri.toString());
 						}
 					} else {
-						block.setResultLog("-> insertion failed");
+						block.setResultLog("failed");
 					}
 					
 				} catch (final InsertException e) {
-					block.setResultLog("-> insertion error: " + e.getMessage());
+					block.setResultLog("error: " + e.getMessage());
 				}
 			}
 			

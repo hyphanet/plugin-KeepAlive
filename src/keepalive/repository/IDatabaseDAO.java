@@ -18,6 +18,9 @@
  */
 package keepalive.repository;
 
+import freenet.keys.FreenetURI;
+import keepalive.exceptions.DAOException;
+
 /**
  * Interface for a database
  */
@@ -33,21 +36,18 @@ public interface IDatabaseDAO {
 	 */
 	default void pluginTerminate() {}
 	
-	/**
-	 * 
-	 */
-	IDatabaseBlock create(String uri, byte[] data);
+	IDatabaseBlock create(FreenetURI uri, byte[] data) throws DAOException;
 	
-	IDatabaseBlock read(String uri);
+	IDatabaseBlock read(FreenetURI uri) throws DAOException;
 	
-	void update(IDatabaseBlock databaseBlock);
+	void update(IDatabaseBlock databaseBlock) throws DAOException;
 	
-	void delete(String uri);
+	void delete(FreenetURI uri) throws DAOException;
 	
-	boolean exist(String uri);
+	boolean exist(FreenetURI uri) throws DAOException;
 	
-	long lastAccessDiff(String uri);
+	long lastAccessDiff(FreenetURI uri) throws DAOException;
 	
-	void lastAccessUpdate(String uri);
+	void lastAccessUpdate(FreenetURI uri) throws DAOException;
 	
 }

@@ -1,10 +1,12 @@
 package keepalive.repository;
 
+import freenet.keys.FreenetURI;
+
 public interface IDatabaseBlock {
 	
-	String getUri();
+	FreenetURI getUri();
 	
-	void setUri(String uri);
+	void setUri(FreenetURI uri);
 	
 	byte[] getData();
 	

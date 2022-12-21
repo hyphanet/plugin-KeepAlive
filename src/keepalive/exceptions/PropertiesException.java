@@ -2,7 +2,7 @@ package keepalive.exceptions;
 
 public class PropertiesException extends Exception {
 	
-	private static final long serialVersionUID = 3156450661722048683L;
+	private static final long serialVersionUID = -2845555980331219730L;
 	
 	public PropertiesException() {}
 	

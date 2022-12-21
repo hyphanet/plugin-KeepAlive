@@ -3,25 +3,26 @@ package keepalive.repository.impl;
 import java.util.Arrays;
 import java.util.Objects;
 
+import freenet.keys.FreenetURI;
 import keepalive.repository.IDatabaseBlock;
 
 public class DatabaseBlock implements IDatabaseBlock {
 	
-	private String uri;
+	private FreenetURI uri;
 	private byte[] data;
 	
-	public DatabaseBlock(String uri, byte[] data) {
+	public DatabaseBlock(FreenetURI uri, byte[] data) {
 		this.uri = uri;
 		this.data = data;
 	}
 	
 	@Override
-	public String getUri() {
+	public FreenetURI getUri() {
 		return uri;
 	}
 	
 	@Override
-	public void setUri(String uri) {
+	public void setUri(FreenetURI uri) {
 		this.uri = uri;
 	}
 	

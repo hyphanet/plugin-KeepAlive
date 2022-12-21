@@ -1,6 +1,5 @@
 package keepalive.urivalues;
 
-import java.net.MalformedURLException;
 import java.util.Map;
 
 import freenet.keys.FreenetURI;
@@ -13,14 +12,6 @@ public interface IUriValue {
 	FreenetURI getUri();
 	
 	void setUri(FreenetURI uri);
-	
-	String getUriString();
-	
-	void setUriString(String uri) throws MalformedURLException;
-	
-	String getShortUri();
-	
-	void setShortUri(String shortUri);
 	
 	int getBlockCount();
 	
@@ -45,5 +36,14 @@ public interface IUriValue {
 	int getSegment();
 	
 	void setSegment(int segment);
+	
+	default String getShortUri() {
+		FreenetURI uri = getUri();
+		if (uri == null)
+			return "";
+		
+		String strUri = uri.toString();
+		return strUri.substring(0, 20) + "...." + strUri.substring(strUri.length() - 50);
+	}
 	
 }

@@ -1,11 +1,11 @@
 package keepalive.service.reinserter;
 
-class FetchBlocksResult {
+public class FetchBlocksResult {
 	
 	private int successful = 0;
 	private int failed = 0;
 	
-	void addResult(boolean successful) {
+	public synchronized void addResult(boolean successful) {
 		if (successful) {
 			this.successful++;
 		} else {
@@ -13,7 +13,7 @@ class FetchBlocksResult {
 		}
 	}
 	
-	double calculatePersistenceRate() {
+	public double calculatePersistenceRate() {
 		return (double) successful / (successful + failed);
 	}
 	
