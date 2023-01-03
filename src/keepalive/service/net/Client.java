@@ -42,7 +42,7 @@ public class Client {
 		final FetchContext fetchContext = hlsc.getFetchContext();
 		fetchContext.returnZIPManifests = true;
 		final FetchWaiter fetchWaiter = new FetchWaiter(rc);
-		hlsc.fetch(uri, -1, fetchWaiter, fetchContext);
+		hlsc.fetch(uri, Long.MAX_VALUE, fetchWaiter, fetchContext); // TODO/FIXME: after Fred update (>1495) Long.MAX_VALUE to -1 again
 		return fetchWaiter.waitForCompletion();
 	}
 	

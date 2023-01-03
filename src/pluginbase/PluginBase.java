@@ -385,10 +385,13 @@ public abstract class PluginBase implements FredPlugin, FredPluginThreadless,
 	}
 	
 	private String stackTraceToString(Throwable e) {
-		final StringWriter sw = new StringWriter();
-		final PrintWriter pw = new PrintWriter(sw);
-		e.printStackTrace(pw);
-		return sw.toString();
+		try (final StringWriter sw = new StringWriter();
+				final PrintWriter pw = new PrintWriter(sw)) {
+			e.printStackTrace(pw);
+			return sw.toString();
+		} catch (IOException e1) {
+			return String.format("Error in stackTraceToString: %s", e1.getMessage());
+		}
 	}
 	
 	protected void clearLog() {

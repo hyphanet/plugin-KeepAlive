@@ -19,6 +19,9 @@
 package keepalive;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -276,10 +279,11 @@ public class Plugin extends PluginBase {
 		}
 		
 		// remove log files
-		final File file = new File(getPluginDirectory() + getLogFilename(uriValue));
-		if (file.exists() && !file.delete()) {
-			log("Plugin.removeUriAndFiles(): remove log files was not successful.", 1);
-			return;
+		try {
+			final File file = new File(getPluginDirectory(), getLogFilename(uriValue));
+			Files.deleteIfExists(file.toPath());
+		} catch (Exception e) {
+			log("Plugin.removeUriAndFiles(): remove log files was not successful.", e);
 		}
 		
 		try {
@@ -289,7 +293,7 @@ public class Plugin extends PluginBase {
 			// remove items
 			uriPropsDAO.delete(uriValue.getUriId());
 		} catch (final DAOException e) {
-			log("Can't delete uriValues", e);
+			log("Plugin.removeUriAndFiles(): Can't delete uriValues", e);
 		}
 	}
 	
