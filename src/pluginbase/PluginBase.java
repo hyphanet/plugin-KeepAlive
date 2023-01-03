@@ -18,10 +18,21 @@
  */
 package pluginbase;
 
-import pluginbase.de.todesbaum.util.freenet.fcp2.Connection;
-import pluginbase.de.todesbaum.util.freenet.fcp2.ConnectionListener;
-import pluginbase.de.todesbaum.util.freenet.fcp2.Message;
-import pluginbase.de.todesbaum.util.freenet.fcp2.Node;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.RandomAccessFile;
+import java.io.StringWriter;
+import java.nio.file.Files;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Map;
+import java.util.Properties;
+import java.util.TimeZone;
+import java.util.TreeMap;
+
 import freenet.clients.http.PageMaker;
 import freenet.l10n.BaseL10n.LANGUAGE;
 import freenet.pluginmanager.FredPlugin;
@@ -31,27 +42,22 @@ import freenet.pluginmanager.FredPluginVersioned;
 import freenet.pluginmanager.PluginRespirator;
 import freenet.support.plugins.helpers1.PluginContext;
 import freenet.support.plugins.helpers1.WebInterface;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Properties;
-import java.util.TimeZone;
-import java.util.TreeMap;
+import keepalive.model.PropertiesKey;
+import pluginbase.de.todesbaum.util.freenet.fcp2.Connection;
+import pluginbase.de.todesbaum.util.freenet.fcp2.ConnectionListener;
+import pluginbase.de.todesbaum.util.freenet.fcp2.Message;
+import pluginbase.de.todesbaum.util.freenet.fcp2.Node;
 
-abstract public class PluginBase implements FredPlugin, FredPluginThreadless,
+public abstract class PluginBase implements FredPlugin, FredPluginThreadless,
 		FredPluginVersioned, FredPluginL10n, ConnectionListener {
-
+	
 	public PluginContext pluginContext;
-
+	
 	PageMaker pagemaker;
 	WebInterface webInterface;
 	Connection fcpConnection;
 	LANGUAGE nodeLanguage;
-
+	
 	private Properties prop;
 	private String strTitle;
 	private String strPath;
@@ -59,76 +65,74 @@ abstract public class PluginBase implements FredPlugin, FredPluginThreadless,
 	private String strMenuTitle = null;
 	private String strMenuTooltip = null;
 	private String strVersion = "0.0";
-	private SimpleDateFormat dateFormat;
-	private TreeMap mPages = new TreeMap();
-	private TreeMap<String, RandomAccessFile> mLogFiles = new TreeMap<>();
-
-	public PluginBase(String strPath, String strTitle, String strPropFilename) {
+	private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy.MM.dd_HH.mm_ss");
+	private final Map<String, PageBase> mPages = new TreeMap<>();
+	private final Map<String, RandomAccessFile> mLogFiles = new TreeMap<>();
+	private final boolean stackTrace = true;// FIXME "true".equals(getProp(PropertiesKey.STACKTRACE));
+	
+	protected PluginBase(String strPath, String strTitle, String strPropFilename) {
 		try {
-
 			this.strPath = strPath;
 			this.strTitle = strTitle;
 			this.strPropFilename = strPropFilename;
-
+			
 			// prepare and clear log file
 			(new File(strPath)).mkdir();
 			initLog("log.txt");
-			dateFormat = new SimpleDateFormat("yyyy.MM.dd_HH.mm_ss");
+			
 			dateFormat.setTimeZone(TimeZone.getDefault());
-
+			
 			// load properties
 			loadProp();
-			if (getProp("loglevel") == null) {
-				setIntProp("loglevel", 0);
+			if (getProp(PropertiesKey.LOGLEVEL) == null) {
+				setIntProp(PropertiesKey.LOGLEVEL, 0);
 			}
-
-		} catch (Exception e) {
-			log("PluginBase(): " + e.getMessage(), 1);
+			
+		} catch (final Exception e) {
+			log("PluginBase(): " + e.getMessage(), e);
 		}
 	}
-
+	
 	String getCategory() {
-		return strTitle.replaceAll(" ", "_");
+		return strTitle.replace(' ', '_');
 	}
-
+	
 	String getPath() {
 		return "/" + strPath;
 	}
-
+	
 	public String getPluginDirectory() {
 		return strPath + "/";
 	}
-
+	
 	@Override
 	public void runPlugin(PluginRespirator pr) { // FredPlugin
 		try {
-
 			log(getVersion() + " started");
-
+			
 			// init plugin context
 			pagemaker = pr.getPageMaker();
 			pluginContext = new PluginContext(pr);
 			webInterface = new WebInterface(pluginContext);
-
+			
 			// fcp connection
 			connectFcp();
-
+			
 			// add menu
 			pagemaker.removeNavigationCategory(getCategory());
 			if (strMenuTitle != null) {
 				webInterface.addNavigationCategory(getPath() + "/", getCategory(), strMenuTooltip, this);
 			}
-
-		} catch (Exception e) {
+		} catch (final Exception e) {
 			log("PluginBase.runPlugin(): " + e.getMessage(), 1);
 		}
 	}
-
+	
 	@Override
 	public String getVersion() { // FredPluginVersioned
 		return strTitle + " " + strVersion;
 	}
-
+	
 	/**
 	 *
 	 * @param strKey
@@ -138,7 +142,7 @@ abstract public class PluginBase implements FredPlugin, FredPluginThreadless,
 	public String getString(String strKey) { // FredPluginL10n
 		return strKey;
 	}
-
+	
 	/**
 	 *
 	 * @param language
@@ -147,11 +151,11 @@ abstract public class PluginBase implements FredPlugin, FredPluginThreadless,
 	public void setLanguage(LANGUAGE language) { // FredPluginL10n
 		nodeLanguage = language;
 	}
-
+	
 	@Override
 	public void terminate() { // FredPlugin
 		try {
-
+			
 			log("plugin base terminates");
 			saveProp();
 			fcpConnection.disconnect();
@@ -160,152 +164,160 @@ abstract public class PluginBase implements FredPlugin, FredPluginThreadless,
 			webInterface = null;
 			pagemaker.removeNavigationCategory(getCategory());
 			log("plugin base terminated");
-			for (RandomAccessFile file : mLogFiles.values()) {
+			for (final RandomAccessFile file : mLogFiles.values()) {
 				file.close();
 			}
-
-		} catch (IOException e) {
+			
+		} catch (final IOException e) {
 			log("PluginBase.terminate(): " + e.getMessage(), 1);
 		}
 	}
-
+	
 	@Override
 	public void messageReceived(Connection connection, Message message) { // ConnectionListener
 		try {
-
 			// errors
-			if (message.getName().equals("ProtocolError"))
+			if ("ProtocolError".equals(message.getName())) {
 				log("ProtocolError: " + message.get("CodeDescription"));
-			else if (message.getName().equals("IdentifierCollision"))
+			} else if ("IdentifierCollision".equals(message.getName())) {
 				log("IdentifierCollision");
-
-			// redirect deprecated usk edition
-			else if (message.getName().equals("GetFailed") &&
-					(message.get("RedirectUri") != null) && !message.get("RedirectUri").equals("")) {
+			} else if ("GetFailed".equals(message.getName()) &&
+					(message.get("RedirectUri") != null) && !"".equals(message.get("RedirectUri"))) {
+				// redirect deprecated usk edition
 				log("USK redirected (" + message.getIdentifier() + ")");
-
+				
 				// reg new edition
-				String pageName = message.getIdentifier().split("_")[0];
-				PageBase page = (PageBase) mPages.get(pageName);
+				final String pageName = message.getIdentifier().split("_")[0];
+				final PageBase page = mPages.get(pageName);
 				if (page != null)
 					page.updateRedirectUri(message);
-
+				
 				// redirect
-				FcpCommands fcpCommand = new FcpCommands(fcpConnection, null);
+				final FcpCommands fcpCommand = new FcpCommands(fcpConnection, null);
 				fcpCommand.setCommandName("ClientGet");
 				fcpCommand.field("Identifier", message.getIdentifier());
 				fcpCommand.field("URI", message.get("RedirectUri"));
 				fcpCommand.send();
-			}
-
-			// register message
-			else {
+			} else {
+				// register message
 				log("fcp: " + message.getName() + " (" + message.getIdentifier() + ")");
-				String pageName = message.getIdentifier().split("_")[0];
-				PageBase page = (PageBase) mPages.get(pageName);
+				final String pageName = message.getIdentifier().split("_")[0];
+				final PageBase page = mPages.get(pageName);
 				if (page != null)
 					page.addMessage(message);
 			}
-
-		} catch (Exception e) {
+			
+		} catch (final Exception e) {
 			log("PluginBase.messageReceived(): " + e.getMessage(), 1);
 		}
 	}
-
+	
 	@Override
 	public void connectionTerminated(Connection connection) { // ConnectionListener
 		log("fcp connection terminated");
 	}
-
+	
 	private synchronized void connectFcp() {
 		try {
-
+			
 			if (fcpConnection == null || !fcpConnection.isConnected()) {
 				fcpConnection = new Connection(new Node("localhost"), "connection_" + System.currentTimeMillis());
 				fcpConnection.addConnectionListener(this);
 				fcpConnection.connect();
 			}
-
-		} catch (IOException e) {
+			
+		} catch (final IOException e) {
 			log("PluginBase.connectFcp(): " + e.getMessage(), 1);
 		}
 	}
-
+	
 	private void loadProp() {
 		try {
-
 			if (strPropFilename != null) {
 				prop = new Properties();
-				File file = new File(strPath + "/" + strPropFilename);
-				File oldFile = new File(strPath + "/" + strPropFilename + ".old");
-
-				FileInputStream is;
-				//always load from the backup if it exists, it is (almost?)
-				//guaranteed to be good.
-				if (oldFile.exists()) {
-					is = new FileInputStream(oldFile);
-				} else if (file.exists()) {
-					is = new FileInputStream(file);
-				} else {
-					throw new Exception("No Prop file found.");
+				final File file = new File(strPath, strPropFilename);
+				final File oldFile = new File(strPath, strPropFilename + ".old");
+				
+				FileInputStream is = null;
+				try {
+					//always load from the backup if it exists, it is (almost?)
+					//guaranteed to be good.
+					if (oldFile.exists()) {
+						is = new FileInputStream(oldFile);
+					} else if (file.exists()) {
+						is = new FileInputStream(file);
+					} else {
+						throw new Exception("No Prop file found.");
+					}
+					prop.load(is);
+				} finally {
+					if (is != null)
+						is.close();
 				}
-				prop.load(is);
-				is.close();
 			}
-
-		} catch (Exception e) {
+		} catch (final Exception e) {
 			log("PluginBase.loadProp(): " + e.getMessage(), 1);
 		}
 	}
-
+	
 	// ******************************************
 	// methods to use in the derived page class:
 	// ******************************************
 	// log files
 	private synchronized void initLog(String strFilename) {
 		try {
-
 			if (!mLogFiles.containsKey(strFilename)) {
-				RandomAccessFile file = new RandomAccessFile(strPath + "/" + strFilename, "rw");
+				final RandomAccessFile file = new RandomAccessFile(strPath + "/" + strFilename, "rw");
 				file.seek(file.length());
 				mLogFiles.put(strFilename, file);
 			}
-
-		} catch (IOException e) {
-			log("PluginBase.initLog(): " + e.getMessage());
+		} catch (final IOException e) {
+			log("PluginBase.initLog() - file: %s", e, strFilename);
 		}
 	}
-
-	public synchronized void log(String strFilename, String cText, int nLogLevel) {
+	
+	protected synchronized void removeLogFromMap(String strFilename) {
 		try {
-
-			if (nLogLevel <= getIntProp("loglevel")) {
+			RandomAccessFile fileHandle = mLogFiles.get(strFilename);
+			if (fileHandle != null) {
+				fileHandle.close();
+				mLogFiles.remove(strFilename);
+			}
+		} catch (final Exception e) {
+			log("PluginBase.removeLogFromMap() - file: %s", e, strFilename);
+		}
+	}
+	
+	public synchronized void logFile(String strFilename, String cText, int nLogLevel) {
+		try {
+			
+			if (nLogLevel <= getIntProp(PropertiesKey.LOGLEVEL)) {
 				initLog(strFilename);
 				mLogFiles.get(strFilename).writeBytes(dateFormat.format(new Date()) + "  " + cText + "\n");
 			}
-
-		} catch (Exception e) {
-			if (!strFilename.equals("log.txt")) // to avoid infinite loop when log.txt was closed on shutdown
+			
+		} catch (final Exception e) {
+			if (!"log.txt".equals(strFilename)) // to avoid infinite loop when log.txt was closed on shutdown
 			{
-				log("PluginBase.log(): " + e.getMessage());
+				log("PluginBase.log():", e);
 			}
 		}
 	}
-
-	public void log(String strFilename, String strText) {
-		log(strFilename, strText, 0);
+	
+	public void logFile(String strFilename, String strText) {
+		logFile(strFilename, strText, 0);
 	}
-
+	
 	public synchronized String getLog(String filename) {
 		try {
-
+			
 			initLog(filename);
-			RandomAccessFile file = mLogFiles.get(filename);
-			int MAX_LOG_LENGTH = 2_000_000; // around 10k lines
-			StringBuilder buffer = new StringBuilder();
-			long fileLength = file.length();
+			final RandomAccessFile file = mLogFiles.get(filename);
+			final int MAX_LOG_LENGTH = 2_000_000; // around 10k lines
+			final StringBuilder buffer = new StringBuilder();
+			final long fileLength = file.length();
 			if (fileLength > MAX_LOG_LENGTH) {
-				long skip = fileLength - MAX_LOG_LENGTH;
+				final long skip = fileLength - MAX_LOG_LENGTH;
 				file.seek(skip);
 				file.readLine();
 				buffer.append("log contains ").append(skip).append(" preceding bytes (~").append(skip / 200).append(" lines)").append("\n");
@@ -317,192 +329,256 @@ abstract public class PluginBase implements FredPlugin, FredPluginThreadless,
 				buffer.append(line).append("\n");
 			}
 			return buffer.toString();
-
-		} catch (IOException e) {
+			
+		} catch (final IOException e) {
 			log("PluginBase.getLog(): " + e.getMessage());
 			return null;
 		}
 	}
-
+	
 	public void clearLog(String strFilename) {
 		try {
-
+			
 			initLog(strFilename);
 			mLogFiles.get(strFilename).setLength(0);
-
-		} catch (IOException e) {
+			
+		} catch (final IOException e) {
 			log("PluginBase.clearLog(): " + e.getMessage());
 		}
 	}
-
+	
 	public void clearAllLogs() {
 		try {
-
-			for (RandomAccessFile file : mLogFiles.values()) {
+			
+			for (final RandomAccessFile file : mLogFiles.values()) {
 				file.setLength(0);
 			}
-
-		} catch (IOException e) {
+			
+		} catch (final IOException e) {
 			log("PluginBase.clearAllLogs(): " + e.getMessage());
 		}
 	}
-
+	
 	public void setLogLevel(int nLevel) throws Exception {
 		try {
-
-			setIntProp("loglevel", nLevel);
-
-		} catch (Exception e) {
-			throw new Exception("PluginBase.setLogLevel(): " + e.getMessage());
+			
+			setIntProp(PropertiesKey.LOGLEVEL, nLevel);
+			
+		} catch (final Exception e) {
+			throw new Exception("PluginBase.setLogLevel(): " + e.getMessage(), e);
 		}
 	}
-
+	
 	// standard log
 	public void log(String cText) {
-		log("log.txt", cText, 0);
+		logFile("log.txt", cText, 0);
 	}
-
+	
+	public void logF(String cText, Object... args) {
+		logFile("log.txt", String.format(cText, args), 0);
+	}
+	
 	public void log(String cText, int nLogLevel) {
-		log("log.txt", cText, nLogLevel);
+		logFile("log.txt", cText, nLogLevel);
 	}
-
+	
+	public void log(String info, Throwable e) {
+		final StringBuilder message = new StringBuilder(String.format("%s: %s %s", info, e.getClass().getName(), e.getMessage()));
+		if (stackTrace)
+			message.append(System.lineSeparator()).append(stackTraceToString(e));
+		
+		log(message.toString());
+	}
+	
+	public void log(String info, Throwable e, Object... args) {
+		log(String.format(info, args), e);
+	}
+	
+	private String stackTraceToString(Throwable e) {
+		try (final StringWriter sw = new StringWriter();
+				final PrintWriter pw = new PrintWriter(sw)) {
+			e.printStackTrace(pw);
+			return sw.toString();
+		} catch (final IOException e1) {
+			return String.format("Error in stackTraceToString: %s", e1.getMessage());
+		}
+	}
+	
 	protected void clearLog() {
 		clearLog("log.txt");
 	}
-
+	
 	public String getLog() {
 		return getLog("log.txt");
 	}
-
+	
 	// methods to set the version of the plugin
 	protected void setVersion(String strVersion) {
 		this.strVersion = strVersion;
 	}
-
+	
 	// methods to add the plugin to the nodes' main menu (fproxy)
 	protected void addPluginToMenu(String strMenuTitle, String strMenuTooltip) {
 		this.strMenuTitle = strMenuTitle;
 		this.strMenuTooltip = strMenuTooltip;
 	}
-
+	
 	// methods to add menu items to the plugins menu (fproxy)
 	protected void addMenuItem(String strTitle, String strTooltip, String strUri, boolean isFullAccessHostsOnly) {
 		try {
-
+			
 			pagemaker.addNavigationLink(getCategory(), strUri, strTitle, strTooltip, isFullAccessHostsOnly, null, this);
 			log("item '" + strTitle + "' added to menu");
-
-		} catch (Exception e) {
+			
+		} catch (final Exception e) {
 			log("PluginBase.addMenuItem(): " + e.getMessage());
 		}
 	}
-
+	
 	// methods to build the plugin
 	protected void addPage(PageBase page) {
 		try {
-
+			
 			mPages.put(page.getName(), page);
-
-		} catch (Exception e) {
+			
+		} catch (final Exception e) {
 			log("PluginBase.addPage(): " + e.getMessage());
 		}
 	}
-
+	
 	// methods to set and get persistent properties
 	public synchronized void saveProp() {
+		if (prop == null)
+			return;
+		
 		try {
-
-			if (prop != null) {
-				File file = new File(strPath + "/" + strPropFilename);
-				File oldFile = new File(strPath + "/" + strPropFilename + ".old");
-				File newFile = new File(strPath + "/" + strPropFilename + ".new");
-
-				if (newFile.exists()) {
-					newFile.delete();
-				}
-
-				try (FileOutputStream stream = new FileOutputStream(newFile)) {
-					prop.store(stream, strTitle);
-					stream.flush();
-				}
-				
-				if (oldFile.exists()) {
-					oldFile.delete();
-				}
-
-				if (file.exists()) {
-					file.renameTo(oldFile);
-				}
-
-				newFile.renameTo(file);
+			final File file = new File(strPath, strPropFilename);
+			final File oldFile = new File(strPath, strPropFilename + ".old");
+			final File newFile = new File(strPath, strPropFilename + ".new");
+			
+			if (newFile.exists()) {
+				Files.delete(newFile.toPath());
 			}
-
-		} catch (IOException e) {
+			
+			try (FileOutputStream stream = new FileOutputStream(newFile)) {
+				prop.store(stream, strTitle);
+				stream.flush();
+			}
+			
+			if (oldFile.exists()) {
+				Files.delete(oldFile.toPath());
+			}
+			
+			if (file.exists()) {
+				file.renameTo(oldFile);
+			}
+			
+			newFile.renameTo(file);
+		} catch (final IOException e) {
 			log("PluginBase.saveProp(): " + e.getMessage());
 		}
 	}
-
-	public void setProp(String strKey, String strValue) throws Exception {
-		try {
-
-			prop.setProperty(strKey, strValue);
-
-		} catch (Exception e) {
-			throw new Exception("PluginBase.setProp(): " + e.getMessage());
-		}
+	
+	/**
+	 * {@link Properties#setProperty(String, String)}
+	 * @param key
+	 * @param value
+	 */
+	public void setProp(PropertiesKey key, String value) {
+		if (key == null || value == null)
+			return;
+		
+		prop.setProperty(key.toString(), value);
 	}
-
-	public String getProp(String strKey) throws Exception {
-		try {
-
-			return prop.getProperty(strKey);
-
-		} catch (Exception e) {
-			throw new Exception("PluginBase.getProp(): " + e.getMessage());
-		}
+	
+	/**
+	 * {@link Properties#getProperty(String)}
+	 */
+	public String getProp(PropertiesKey key) {
+		return key != null ? prop.getProperty(key.toString()) : null;
 	}
-
-	public void setIntProp(String strKey, int nValue) throws Exception {
-		try {
-
-			prop.setProperty(strKey, String.valueOf(nValue));
-
-		} catch (Exception e) {
-			throw new Exception("PluginBase.setIntProp(): " + e.getMessage());
-		}
+	
+	/**
+	 * {@link Properties#getProperty(String)}
+	 * @param key
+	 * @param value
+	 */
+	public void setIntProp(PropertiesKey key, int value) {
+		final String strValue = String.valueOf(value);
+		if (key == null || strValue == null)
+			return;
+		
+		setProp(key, strValue);
 	}
-
-	public int getIntProp(String strKey) throws Exception {
-		try {
-
-			String strValue = getProp(strKey);
-			if (strValue != null && !strValue.equals("")) {
-				return Integer.parseInt(strValue);
-			} else {
-				return 0;
-			}
-
-		} catch (Exception e) {
-			throw new Exception("PluginBase.getIntProp(): " + e.getMessage());
-		}
+	
+	/**
+	 * get a value and parse it to an integer
+	 * @param key
+	 * @return a parsed number from the key or 0
+	 */
+	public int getIntProp(PropertiesKey key) {
+		final String value = getProp(key);
+		return parseInt(value);
 	}
-
-	protected void removeProp(String strKey) {
-		try {
-
-			prop.remove(strKey);
-
-		} catch (Exception e) {
-			log("PluginBase.removeProp(): " + e.getMessage());
+	
+	/**
+	 * {@link Integer#parseInt(String)}
+	 * @param value a number as string
+	 * @return a parsed number from the input or 0
+	 */
+	public int parseInt(String value) {
+		int result = -1;
+		
+		if (value != null && !value.trim().isEmpty()) {
+			try {
+				result = Integer.parseInt(value);
+			} catch (final NumberFormatException e) {/* ignore */}
 		}
+		
+		return result;
 	}
-
+	
+	/**
+	 * {@link Properties#remove(Object)}
+	 * @param key
+	 */
+	protected void removeProp(PropertiesKey key) {
+		if (key == null)
+			return;
+		
+		prop.remove(key.toString());
+	}
+	
+	/**
+	 * {@link Properties#remove(Object)}
+	 * @param key
+	 */
+	protected void removeProp(String key) {
+		if (key == null)
+			return;
+		
+		prop.remove(key);
+	}
+	
+	/**
+	 * {@link Properties#clear()}
+	 */
 	protected void clearProp() {
 		prop.clear();
 	}
-
+	
+	/**
+	 * Returns the Properties
+	 */
+	protected Properties getProperties() {
+		return prop;
+	}
+	
+	/**
+	 * set the timezone to utc
+	 */
 	protected void setTimezoneUTC() {
-		dateFormat = new SimpleDateFormat("yyyy.MM.dd_HH.mm_ss");
 		dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
 	}
+	
 }

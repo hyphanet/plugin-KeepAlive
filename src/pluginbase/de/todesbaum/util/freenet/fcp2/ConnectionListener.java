@@ -27,7 +27,7 @@ import java.util.EventListener;
  * @version $Id$
  */
 public interface ConnectionListener extends EventListener {
-
+	
 	/**
 	 * Notifies a client that a message was received.
 	 *
@@ -35,12 +35,12 @@ public interface ConnectionListener extends EventListener {
 	 * @param message The message that was received
 	 */
 	void messageReceived(Connection connection, Message message);
-
+	
 	/**
 	 * Notifies a client that the connection to the node has been lost.
 	 *
 	 * @param connection The connection that was lost
 	 */
 	void connectionTerminated(Connection connection);
-
+	
 }

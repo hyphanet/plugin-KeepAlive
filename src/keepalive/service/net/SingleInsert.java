@@ -22,106 +22,106 @@ import freenet.client.InsertBlock;
 import freenet.client.InsertContext;
 import freenet.client.InsertException;
 import freenet.keys.FreenetURI;
-import keepalive.service.reinserter.Reinserter;
-import keepalive.model.Block;
+import keepalive.Plugin;
+import keepalive.model.IBlock;
 import keepalive.model.Segment;
+import keepalive.service.reinserter.Reinserter;
 
 public class SingleInsert extends SingleJob implements Runnable {
-
-    public SingleInsert(Reinserter reinserter, Block block) {
-        super(reinserter, "insertion", block);
-    }
-
-    @Override
-    public String toString() {
-        return "KeepAlive - SingleInsert";
-    }
-
-    @Override
-    public void run() {
-        Thread.currentThread().setName("KeepAlive SingleInsert");
-
-        FreenetURI fetchUri = getUri();
-        block.setInsertDone(false);
-        block.setInsertSuccessful(false);
-
-        try {
-
-            // fetch
-            if (block.getBucket() == null) {
-                SingleFetch singleFetch = new SingleFetch(reinserter, block, false);
-                singleFetch.call();
-                if (!reinserter.isActive()) {
-                    return;
-                }
-            }
-
-            Segment segment = reinserter.getSegments().get(block.getSegmentId());
-
-            if (block.getBucket() == null) {
-                block.setResultLog("-> insertion failed: fetch failed");
-            } else { // insert
-                if (Thread.currentThread().isInterrupted()) {
-                    return;
-                }
-
-                try {
-
-                    InsertBlock insertBlock = new InsertBlock(block.getBucket(), null, fetchUri);
-                    InsertContext insertContext = plugin.getFreenetClient().getInsertContext(true);
-
-                    if (compressionAlgorithm != null && !compressionAlgorithm.equals("none")) {
-                        insertContext.compressorDescriptor = compressionAlgorithm;
-                    }
-
-                    // switch to crypto_algorithm 2 (instead of using the new one that is introduced since 1416)
-                    if (uriExtra[1] == 2) {
-                        insertContext.setCompatibilityMode(InsertContext.CompatibilityMode.COMPAT_1255);
-                    }
-
-                    // don't triple-insert blocks.
-                    insertContext.extraInsertsSingleBlock = 0;
-                    insertContext.earlyEncode = false;
-
-                    // re-insert top blocks and single key files at very high priority, all others at medium prio.
-                    short prio = segment.size() == 1 ? (short) 1 : (short) 3;
-
-                    FreenetURI insertUri = plugin.getFreenetClient()
-                            .insert(insertBlock, null, false, prio, insertContext, fetchUri.getCryptoKey());
-
-                    // insert finished
-                    if (!reinserter.isActive()) {
-                        return;
-                    }
-
-                    if (insertUri != null) {
-                        if (fetchUri.equals(insertUri)) {
-                            block.setInsertSuccessful(true);
-                            block.setResultLog("-> inserted: " + insertUri.toString());
-                        } else {
-                            block.setResultLog("-> insertion failed - different uri: " + insertUri.toString());
-                        }
-                    } else {
-                        block.setResultLog("-> insertion failed");
-                    }
-
-                } catch (InsertException e) {
-                    block.setResultLog("-> insertion error: " + e.getMessage());
-                }
-            }
-
-            // reg success if single-block-segment
-            if (segment.size() == 1) {
-                reinserter.updateSegmentStatistic(segment, block.isInsertSuccessful());
-            }
-
-            // finish
-            block.setInsertDone(true);
-
-        } catch (Exception e) {
-            log("SingleInsert.run(): " + e.getMessage(), 0);
-        } finally {
-            finish();
-        }
-    }
+	
+	public SingleInsert(Reinserter reinserter, IBlock block) {
+		super(reinserter, "insertion", block);
+	}
+	
+	@Override
+	public String toString() {
+		return Plugin.PLUGIN_NAME + " - SingleInsert";
+	}
+	
+	@Override
+	public void run() {
+		Thread.currentThread().setName(Plugin.PLUGIN_NAME + " SingleInsert");
+		
+		final FreenetURI fetchUri = getUri();
+		block.setInsertDone(false);
+		block.setInsertSuccessful(false);
+		
+		try {
+			// fetch
+			if (block.getBucket() == null) {
+				final SingleFetch singleFetch = new SingleFetch(reinserter, block);
+				singleFetch.call();
+				if (!reinserter.isActive()) {
+					return;
+				}
+			}
+			
+			final Segment segment = reinserter.getSegments().get(block.getSegmentId());
+			
+			if (block.getBucket() == null) {
+				block.setResultLog("failed: fetch failed");
+			} else { // insert
+				if (Thread.currentThread().isInterrupted()) {
+					return;
+				}
+				
+				try {
+					final InsertBlock insertBlock = new InsertBlock(block.getBucket(), null, fetchUri);
+					final InsertContext insertContext = plugin.getFreenetClient().getInsertContext(true);
+					
+					if (compressionAlgorithm != null && !"none".equals(compressionAlgorithm)) {
+						insertContext.compressorDescriptor = compressionAlgorithm;
+					}
+					
+					// switch to crypto_algorithm 2 (instead of using the new one that is introduced since 1416)
+					if (uriExtra[1] == 2) {
+						insertContext.setCompatibilityMode(InsertContext.CompatibilityMode.COMPAT_1255);
+					}
+					
+					// don't triple-insert blocks.
+					insertContext.extraInsertsSingleBlock = 0;
+					insertContext.earlyEncode = false;
+					
+					// re-insert top blocks and single key files at very high priority, all others at medium prio.
+					final short prio = segment.size() == 1 ? (short) 1 : (short) 3;
+					
+					final FreenetURI insertUri = plugin.getFreenetClient()
+							.insert(insertBlock, null, false, prio, insertContext, fetchUri.getCryptoKey());
+					
+					// insert finished
+					if (!reinserter.isActive()) {
+						return;
+					}
+					
+					if (insertUri != null) {
+						if (fetchUri.equals(insertUri)) {
+							block.setInsertSuccessful(true);
+							block.setResultLog("inserted: " + insertUri.toString());
+						} else {
+							block.setResultLog("failed - different uri: " + insertUri.toString());
+						}
+					} else {
+						block.setResultLog("failed");
+					}
+					
+				} catch (final InsertException e) {
+					block.setResultLog("error: " + e.getMessage());
+				}
+			}
+			
+			// reg success if single-block-segment
+			if (segment.size() == 1) {
+				reinserter.updateSegmentStatistic(segment, block.isInsertSuccessful());
+			}
+			
+			// finish
+			block.setInsertDone(true);
+			
+		} catch (final Exception e) {
+			log("SingleInsert.run(): " + e.getMessage(), 0);
+		} finally {
+			finish();
+		}
+	}
+	
 }

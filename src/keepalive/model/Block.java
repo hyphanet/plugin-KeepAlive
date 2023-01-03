@@ -18,94 +18,137 @@
  */
 package keepalive.model;
 
+import java.util.Objects;
+
 import freenet.keys.FreenetURI;
 import freenet.support.io.ArrayBucket;
 
-public class Block {
-
-    private int id;
-    private int segmentId;
-    private FreenetURI uri;
-    private ArrayBucket bucket;
-    private boolean dataBlock;
-    private boolean fetchDone; // done but not necessarily successful
-    private boolean fetchSuccessful;
-    private boolean insertDone; // done but not necessarily successful
-    private boolean insertSuccessful;
-    private String resultLog;
-
-    public Block(FreenetURI uri, int segmentId, int id, boolean isDataBlock) {
-        this.id = id;
-        this.segmentId = segmentId;
-        this.uri = uri;
-        dataBlock = isDataBlock;
-    }
-
-    public int getId() {
-        return id;
-    }
-
-    public int getSegmentId() {
-        return segmentId;
-    }
-
-    public FreenetURI getUri() {
-        return uri;
-    }
-
-    public ArrayBucket getBucket() {
-        return bucket;
-    }
-
-    public void setBucket(ArrayBucket bucket) {
-        this.bucket = bucket;
-    }
-
-    public boolean isDataBlock() {
-        return dataBlock;
-    }
-
-    public boolean isFetchInProcess() {
-        return !fetchDone;
-    }
-
-    public void setFetchDone(boolean done) {
-        fetchDone = done;
-    }
-
-    boolean isInsertDone() {
-        return insertDone;
-    }
-
-    public void setInsertDone(boolean done) {
-        insertDone = done;
-    }
-
-    public boolean isInsertSuccessful() {
-        return insertSuccessful;
-    }
-
-    public void setInsertSuccessful(boolean successful) {
-        insertSuccessful = successful;
-    }
-
-    public boolean isFetchSuccessful() {
-        return fetchSuccessful;
-    }
-
-    public void setFetchSuccessful(boolean successful) {
-        fetchSuccessful = successful;
-    }
-
-    public String getResultLog() {
-        return resultLog;
-    }
-
-    public void setResultLog(String result) {
-        resultLog = result;
-    }
-
-    public void appendResultLog(String result) {
-        resultLog += result;
-    }
+public class Block implements IBlock {
+	
+	private final int id;
+	private final int segmentId;
+	private final FreenetURI uri;
+	private ArrayBucket bucket;
+	private final boolean dataBlock;
+	private boolean fetchDone; // done but not necessarily successful
+	private boolean fetchSuccessful;
+	private boolean insertDone; // done but not necessarily successful
+	private boolean insertSuccessful;
+	private String resultLog;
+	
+	public Block(FreenetURI uri, int segmentId, int id, boolean isDataBlock) {
+		this.uri = uri;
+		this.segmentId = segmentId;
+		this.id = id;
+		this.dataBlock = isDataBlock;
+	}
+	
+	@Override
+	public int getId() {
+		return id;
+	}
+	
+	@Override
+	public int getSegmentId() {
+		return segmentId;
+	}
+	
+	@Override
+	public FreenetURI getUri() {
+		return uri;
+	}
+	
+	@Override
+	public ArrayBucket getBucket() {
+		return bucket;
+	}
+	
+	@Override
+	public void setBucket(ArrayBucket bucket) {
+		this.bucket = bucket;
+	}
+	
+	@Override
+	public boolean isDataBlock() {
+		return dataBlock;
+	}
+	
+	@Override
+	public boolean isFetchInProcess() {
+		return !fetchDone;
+	}
+	
+	@Override
+	public void setFetchDone(boolean done) {
+		fetchDone = done;
+	}
+	
+	@Override
+	public boolean isInsertDone() {
+		return insertDone;
+	}
+	
+	@Override
+	public void setInsertDone(boolean done) {
+		insertDone = done;
+	}
+	
+	@Override
+	public boolean isInsertSuccessful() {
+		return insertSuccessful;
+	}
+	
+	@Override
+	public void setInsertSuccessful(boolean successful) {
+		insertSuccessful = successful;
+	}
+	
+	@Override
+	public boolean isFetchSuccessful() {
+		return fetchSuccessful;
+	}
+	
+	@Override
+	public void setFetchSuccessful(boolean successful) {
+		fetchSuccessful = successful;
+	}
+	
+	@Override
+	public String getResultLog() {
+		return resultLog;
+	}
+	
+	@Override
+	public void setResultLog(String result) {
+		resultLog = result;
+	}
+	
+	@Override
+	public void appendResultLog(String result) {
+		resultLog += result;
+	}
+	
+	@Override
+	public String toString() {
+		return String.format("Block [id=%s, segmentId=%s, uri=%s, bucket=%s, dataBlock=%s, fetchDone=%s, fetchSuccessful=%s, insertDone=%s, insertSuccessful=%s, resultLog=%s]", id, segmentId, uri,
+				bucket, dataBlock, fetchDone, fetchSuccessful, insertDone, insertSuccessful, resultLog);
+	}
+	
+	@Override
+	public int hashCode() {
+		return Objects.hash(bucket, dataBlock, fetchDone, fetchSuccessful, id, insertDone, insertSuccessful, resultLog, segmentId, uri);
+	}
+	
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if ((obj == null) || (getClass() != obj.getClass()))
+			return false;
+		final Block other = (Block) obj;
+		return Objects.equals(bucket, other.bucket) && dataBlock == other.dataBlock && fetchDone == other.fetchDone && fetchSuccessful == other.fetchSuccessful && id == other.id
+				&& insertDone == other.insertDone && insertSuccessful == other.insertSuccessful && Objects.equals(resultLog, other.resultLog) && segmentId == other.segmentId
+				&& Objects.equals(uri, other.uri);
+	}
+	
 }

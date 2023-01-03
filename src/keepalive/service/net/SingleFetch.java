@@ -18,83 +18,99 @@
  */
 package keepalive.service.net;
 
+import java.io.IOException;
+import java.util.concurrent.Callable;
+
 import freenet.client.FetchException;
 import freenet.client.FetchResult;
 import freenet.keys.FreenetURI;
 import freenet.support.io.ArrayBucket;
+import keepalive.Plugin;
+import keepalive.model.IBlock;
+import keepalive.service.reinserter.FetchBlocksResult;
 import keepalive.service.reinserter.Reinserter;
-import keepalive.model.Block;
-
-import java.io.IOException;
-import java.util.concurrent.Callable;
 
 public class SingleFetch extends SingleJob implements Callable<Boolean> {
-
-    private final boolean persistenceCheck;
-
-    public SingleFetch(Reinserter reinserter, Block block, boolean persistenceCheck) {
-        super(reinserter, "fetch", block);
-
-        this.persistenceCheck = persistenceCheck;
-    }
-
-    @Override
-    public Boolean call() {
-        Thread.currentThread().setName("KeepAlive SingleFetch");
-        FetchResult fetchResult = null;
-        boolean fetchSuccessful = false;
-
-        try {
-
-            // init
-            HLSCIgnoreStore hlscIgnoreStore = HLSCIgnoreStore.getInstance(plugin.getFreenetClient());
-
-            FreenetURI fetchUri = getUri();
-            block.setFetchDone(false);
-            block.setFetchSuccessful(false);
-
-            // request
-            try {
-
-                if (!persistenceCheck) {
-                    fetchResult = plugin.getFreenetClient().fetch(fetchUri);
-                } else {
-                    fetchResult = hlscIgnoreStore.fetch(fetchUri);
-                }
-
-            } catch (FetchException e) {
-                block.setResultLog("-> fetch error: " + e.getMessage());
-            }
-
-            if (Thread.currentThread().isInterrupted()) {
-                return false;
-            }
-
-            // log / success flag
-            if (block.getResultLog() == null) {
-                if (fetchResult == null) {
-                    block.setResultLog("-> fetch failed");
-                } else {
-                    block.setBucket(new ArrayBucket(fetchResult.asByteArray()));
-                    block.setFetchSuccessful(true);
-                    block.setResultLog("-> fetch successful");
-                    fetchSuccessful = true;
-                }
-            }
-
-            //finish
-            reinserter.registerBlockFetchSuccess(block);
-            block.setFetchDone(true);
-
-        } catch (IOException e) {
-            log("SingleFetch.run(): " + e.getMessage(), 0);
-        } finally {
-            if (fetchResult != null && fetchResult.asBucket() != null) {
-                fetchResult.asBucket().free();
-            }
-            finish();
-        }
-
-        return fetchSuccessful;
-    }
+	
+	private boolean persistenceCheck;
+	private FetchBlocksResult fetchBlocksResult;
+	
+	public SingleFetch(Reinserter reinserter, IBlock block) {
+		super(reinserter, "fetch", block);
+		
+		this.persistenceCheck = false;
+	}
+	
+	public SingleFetch(Reinserter reinserter, IBlock block, FetchBlocksResult fetchBlocksResult) {
+		this(reinserter, block);
+		
+		this.persistenceCheck = true;
+		this.fetchBlocksResult = fetchBlocksResult;
+	}
+	
+	@Override
+	public Boolean call() {
+		final Boolean result = fetch();
+		
+		if (fetchBlocksResult != null)
+			fetchBlocksResult.addResult(result);
+		
+		return result;
+	}
+	
+	public Boolean fetch() {
+		Thread.currentThread().setName(Plugin.PLUGIN_NAME + " SingleFetch");
+		FetchResult fetchResult = null;
+		boolean fetchSuccessful = false;
+		
+		try {
+			// init
+			final HLSCIgnoreStore hlscIgnoreStore = HLSCIgnoreStore.getInstance(plugin.getFreenetClient());
+			
+			final FreenetURI fetchUri = getUri();
+			block.setFetchDone(false);
+			block.setFetchSuccessful(false);
+			
+			// request
+			try {
+				if (!persistenceCheck) {
+					fetchResult = plugin.getFreenetClient().fetch(fetchUri);
+				} else {
+					fetchResult = hlscIgnoreStore.fetch(fetchUri);
+				}
+			} catch (final FetchException e) {
+				block.setResultLog("error: " + e.getMessage());
+			}
+			
+			if (Thread.currentThread().isInterrupted()) {
+				return false;
+			}
+			
+			// log / success flag
+			if (block.getResultLog() == null) {
+				if (fetchResult == null) {
+					block.setResultLog("failed");
+				} else {
+					block.setBucket(new ArrayBucket(fetchResult.asByteArray()));
+					block.setFetchSuccessful(true);
+					block.setResultLog("successful");
+					fetchSuccessful = true;
+				}
+			}
+			
+			//finish
+			reinserter.registerBlockFetchSuccess(block);
+			block.setFetchDone(true);
+		} catch (final IOException e) {
+			log("SingleFetch.run(): " + e.getMessage(), 0);
+		} finally {
+			if (fetchResult != null && fetchResult.asBucket() != null) {
+				fetchResult.asBucket().free();
+			}
+			finish();
+		}
+		
+		return fetchSuccessful;
+	}
+	
 }

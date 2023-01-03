@@ -28,9 +28,9 @@ import java.io.IOException;
  * @version $Id$
  */
 public class TempFileInputStream extends FileInputStream {
-
-	private File tempFile;
-
+	
+	private final File tempFile;
+	
 	/**
 	 * @param name
 	 * @throws FileNotFoundException
@@ -38,7 +38,7 @@ public class TempFileInputStream extends FileInputStream {
 	public TempFileInputStream(String name) throws FileNotFoundException {
 		this(new File(name));
 	}
-
+	
 	/**
 	 * @param file
 	 * @throws FileNotFoundException
@@ -47,11 +47,11 @@ public class TempFileInputStream extends FileInputStream {
 		super(file);
 		tempFile = file;
 	}
-
+	
 	@Override
 	public void close() throws IOException {
 		super.close();
 		tempFile.delete();
 	}
-
+	
 }

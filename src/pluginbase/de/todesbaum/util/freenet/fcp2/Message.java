@@ -21,8 +21,8 @@ package pluginbase.de.todesbaum.util.freenet.fcp2;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 import java.util.Map.Entry;
+import java.util.Set;
 
 /**
  * Contains replies sent by the Freenet node. A message always has a name, and
@@ -35,27 +35,27 @@ import java.util.Map.Entry;
  * @see de.todesbaum.util.freenet.fcp2.Client
  */
 public class Message {
-
+	
 	/**
 	 * The name of this message.
 	 */
 	private final String name;
-
+	
 	/**
 	 * The identifier of this message.
 	 */
 	private String identifier = "";
-
+	
 	/**
 	 * The parameters of this message.
 	 */
 	private final Map<String, String> parameters = new HashMap<>();
-
+	
 	/**
 	 * The payload.
 	 */
 	private InputStream payloadInputStream;
-
+	
 	/**
 	 * Creates a new message with the specified name.
 	 *
@@ -64,7 +64,7 @@ public class Message {
 	public Message(String name) {
 		this.name = name;
 	}
-
+	
 	/**
 	 * Returns the identifier of this message.
 	 *
@@ -73,7 +73,7 @@ public class Message {
 	public String getIdentifier() {
 		return identifier;
 	}
-
+	
 	/**
 	 * Sets the identifier of this message.
 	 *
@@ -82,7 +82,7 @@ public class Message {
 	public void setIdentifier(String identifier) {
 		this.identifier = identifier;
 	}
-
+	
 	/**
 	 * Returns the name of this message.
 	 *
@@ -91,7 +91,7 @@ public class Message {
 	public String getName() {
 		return name;
 	}
-
+	
 	/**
 	 * Tests whether this message contains the parameter with the specified key.
 	 * Key names are compared ignoring case.
@@ -103,7 +103,7 @@ public class Message {
 	public boolean containsKey(String key) {
 		return parameters.containsKey(key.toLowerCase());
 	}
-
+	
 	/**
 	 * Returns all parameters of this message. The keys of the entries are all
 	 * lower case so if you want to match the parameter names you have to watch
@@ -114,7 +114,7 @@ public class Message {
 	public Set<Entry<String, String>> entrySet() {
 		return parameters.entrySet();
 	}
-
+	
 	/**
 	 * Returns the value of the parameter with the name specified by
 	 * <code>key</code>.
@@ -125,7 +125,7 @@ public class Message {
 	public String get(String key) {
 		return parameters.get(key.toLowerCase());
 	}
-
+	
 	/**
 	 * Stores the specified value as parameter with the name specified by
 	 * <code>key</code>.
@@ -138,7 +138,7 @@ public class Message {
 	public String put(String key, String value) {
 		return parameters.put(key.toLowerCase(), value);
 	}
-
+	
 	/**
 	 * Returns the number of parameters in this message.
 	 *
@@ -147,21 +147,21 @@ public class Message {
 	public int size() {
 		return parameters.size();
 	}
-
+	
 	/**
 	 * @return Returns the payloadInputStream.
 	 */
 	public InputStream getPayloadInputStream() {
 		return payloadInputStream;
 	}
-
+	
 	/**
 	 * @param payloadInputStream The payloadInputStream to set.
 	 */
 	public void setPayloadInputStream(InputStream payloadInputStream) {
 		this.payloadInputStream = payloadInputStream;
 	}
-
+	
 	/**
 	 * Returns a textual representation of this message, containing its name,
 	 * the identifier, and the parameters.
@@ -172,5 +172,5 @@ public class Message {
 	public String toString() {
 		return name + "[identifier=" + identifier + ",parameters=" + parameters.toString() + "]";
 	}
-
+	
 }

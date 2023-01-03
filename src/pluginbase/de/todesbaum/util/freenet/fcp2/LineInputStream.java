@@ -29,17 +29,17 @@ import java.io.InputStream;
  * @version $Id$
  */
 public class LineInputStream extends FilterInputStream {
-
+	
 	private boolean skipLinefeed;
 	private final StringBuffer lineBuffer = new StringBuffer();
-
+	
 	/**
 	 * @param in
 	 */
 	public LineInputStream(InputStream in) {
 		super(in);
 	}
-
+	
 	public synchronized String readLine() {
 		try {
 			lineBuffer.setLength(0);
@@ -61,9 +61,9 @@ public class LineInputStream extends FilterInputStream {
 				}
 			}
 			return lineBuffer.toString();
-		} catch (IOException e) {
+		} catch (final IOException e) {
 			return null;
 		}
 	}
-
+	
 }

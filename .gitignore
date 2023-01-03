@@ -2,3 +2,8 @@ build/
 .gradle/
 .idea/
 *.iml
+
+# Eclipse IDE stuff
+/.settings
+/.project
+/.classpath

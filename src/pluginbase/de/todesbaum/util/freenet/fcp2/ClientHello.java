@@ -33,24 +33,24 @@ import java.io.Writer;
  * @version $Id$
  */
 public class ClientHello extends Command {
-
+	
 	/**
 	 * The name of the client.
 	 */
 	protected String name;
-
+	
 	/**
 	 * The version of the FCP protocol the client expects.
 	 */
 	private String expectedVersion = "2.0";
-
+	
 	/**
 	 * Creates a new <code>ClientHello</code> command.
 	 */
 	protected ClientHello() {
 		super("ClientHello", "ClientHello-" + System.currentTimeMillis());
 	}
-
+	
 	/**
 	 * Returns the value of the <code>ExpectedVersion</code> parameter of this
 	 * command. At the moment this value is not used by the node but in the
@@ -61,7 +61,7 @@ public class ClientHello extends Command {
 	public String getExpectedVersion() {
 		return expectedVersion;
 	}
-
+	
 	/**
 	 * Sets the value of the <code>ExpectedVersion</code> parameter of this
 	 * command. At the moment this value is not used by the node but in the
@@ -72,7 +72,7 @@ public class ClientHello extends Command {
 	protected void setExpectedVersion(String expectedVersion) {
 		this.expectedVersion = expectedVersion;
 	}
-
+	
 	/**
 	 * Returns the name of the client that is connecting.
 	 *
@@ -81,7 +81,7 @@ public class ClientHello extends Command {
 	public String getName() {
 		return name;
 	}
-
+	
 	/**
 	 * Sets the name of the client that is connecting.
 	 *
@@ -90,7 +90,7 @@ public class ClientHello extends Command {
 	public void setName(String name) {
 		this.name = name;
 	}
-
+	
 	/**
 	 * {@inheritDoc}
 	 *
@@ -101,5 +101,5 @@ public class ClientHello extends Command {
 		writer.write("Name=" + name + LINEFEED);
 		writer.write("ExpectedVersion=" + expectedVersion + LINEFEED);
 	}
-
+	
 }

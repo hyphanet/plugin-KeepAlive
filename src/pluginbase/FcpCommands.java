@@ -18,65 +18,65 @@
  */
 package pluginbase;
 
-import pluginbase.de.todesbaum.util.freenet.fcp2.Connection;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
+import pluginbase.de.todesbaum.util.freenet.fcp2.Connection;
 
 public class FcpCommands extends FcpCommandBase {
-
+	
 	FcpCommands(Connection fcpConnection, PageBase page) {
 		super(fcpConnection, page);
 	}
-
+	
 	public void sendGenerateSSK(String strId) throws Exception {
 		try {
-
+			
 			init("GenerateSSK", strId);
 			send();
-
-		} catch (Exception e) {
+			
+		} catch (final Exception e) {
 			throw new Exception("FcpCommand.sendGenerateSSK(): " + e.getMessage());
 		}
 	}
-
+	
 	public void sendClientGet(String strId, String strUri) throws Exception {
 		try {
-
+			
 			init("ClientGet", strId);
 			field("URI", strUri);
 			send();
-
-		} catch (Exception e) {
+			
+		} catch (final Exception e) {
 			throw new Exception("FcpCommand.sendClientGet(): " + e.getMessage());
 		}
 	}
-
+	
 	public void sendClientPut(String strId, String strUri, InputStream dataStream, int nDataLength) throws Exception {
 		try {
-
+			
 			init("ClientPut", strId);
 			field("URI", strUri);
 			field("DataLength", nDataLength);
 			send(dataStream, nDataLength);
-
-		} catch (Exception e) {
+			
+		} catch (final Exception e) {
 			throw new Exception("FcpCommand.sendClientPut(): " + e.getMessage());
 		}
 	}
-
+	
 	public void sendClientPut(String cId, String cUri, String cContent) throws Exception {
 		try {
-
-			byte[] aContent = cContent.getBytes(UTF_8);
-			ByteArrayInputStream dataStream = new ByteArrayInputStream(aContent);
+			
+			final byte[] aContent = cContent.getBytes(UTF_8);
+			final ByteArrayInputStream dataStream = new ByteArrayInputStream(aContent);
 			sendClientPut(cId, cUri, dataStream, aContent.length);
-
-		} catch (Exception e) {
+			
+		} catch (final Exception e) {
 			throw new Exception("FcpCommand.sendClientPut(): " + e.getMessage());
 		}
 	}
-
+	
 }
