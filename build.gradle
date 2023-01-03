@@ -16,8 +16,12 @@ configurations {
 }
 
 dependencies {
+	// Option 1: use source code, you need to uncomment the two lines in the settings.gradle file
 	//compile project(':fred')
+	
+	// Option 2: use JAR
 	compile files('../fred/build/libs/freenet.jar')
+	
     // only used for TarInputStream
     compile group: 'org.apache.ant', name: 'ant', version: '1.10.12'
     extraLibs group: 'com.h2database', name: 'h2', version: '2.0.206'
