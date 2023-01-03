@@ -31,7 +31,7 @@ public class Client {
         FetchContext fetchContext = hlsc.getFetchContext();
         fetchContext.returnZIPManifests = true;
         FetchWaiter fetchWaiter = new FetchWaiter(rc);
-        hlsc.fetch(uri, -1, fetchWaiter, fetchContext);
+        hlsc.fetch(uri, Long.MAX_VALUE, fetchWaiter, fetchContext);
         return fetchWaiter.waitForCompletion();
     }
 
