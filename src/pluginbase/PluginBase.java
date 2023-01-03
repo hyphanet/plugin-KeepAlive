@@ -389,7 +389,7 @@ public abstract class PluginBase implements FredPlugin, FredPluginThreadless,
 				final PrintWriter pw = new PrintWriter(sw)) {
 			e.printStackTrace(pw);
 			return sw.toString();
-		} catch (IOException e1) {
+		} catch (final IOException e1) {
 			return String.format("Error in stackTraceToString: %s", e1.getMessage());
 		}
 	}

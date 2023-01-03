@@ -38,11 +38,11 @@ public interface IUriValue {
 	void setSegment(int segment);
 	
 	default String getShortUri() {
-		FreenetURI uri = getUri();
+		final FreenetURI uri = getUri();
 		if (uri == null)
 			return "";
 		
-		String strUri = uri.toString();
+		final String strUri = uri.toString();
 		return strUri.substring(0, 20) + "...." + strUri.substring(strUri.length() - 50);
 	}
 	

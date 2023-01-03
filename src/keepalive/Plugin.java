@@ -19,9 +19,7 @@
 package keepalive;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -282,8 +280,9 @@ public class Plugin extends PluginBase {
 		try {
 			final File file = new File(getPluginDirectory(), getLogFilename(uriValue));
 			Files.deleteIfExists(file.toPath());
-		} catch (Exception e) {
+		} catch (final Exception e) {
 			log("Plugin.removeUriAndFiles(): remove log files was not successful.", e);
+			return;
 		}
 		
 		try {
