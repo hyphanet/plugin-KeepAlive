@@ -18,4 +18,5 @@ If you would like to use Eclipse than import the project as "Existing Gradle Pro
 - project specific
 - specific gradle version to 4.10.3
 - set gradle "Java home" to "*\Eclipse Adoptium\jdk8*" without "\bin"
+
 Also you need to import "Fred" and do the same
