@@ -86,10 +86,10 @@ public class H2DatabaseDAO implements IDatabaseDAO {
 	public void pluginStart() {
 		try (Connection connection = getConnection();
 				Statement statement = connection.createStatement()) {
-			final String sql = "CREATE TABLE IF NOT EXISTS Block (" +
+			final String sql = String.format("CREATE TABLE IF NOT EXISTS Block (" +
 					"uri VARCHAR(256) PRIMARY KEY, " +
-					"data VARBINARY(32768) not null, " +
-					"last_access TIMESTAMP DEFAULT CURRENT_TIMESTAMP)";
+					"data VARBINARY(%s) not null, " +
+					"last_access TIMESTAMP DEFAULT CURRENT_TIMESTAMP)", IDatabaseBlock.MAX_SIZE);
 			statement.executeUpdate(sql);
 		} catch (final Exception e) {
 			plugin.log(e.getMessage(), e);
@@ -119,10 +119,12 @@ public class H2DatabaseDAO implements IDatabaseDAO {
 	
 	@Override
 	public IDatabaseBlock create(FreenetURI uri, byte[] data) throws DAOException {
-		if (data == null)
-			throw new DAOException("The data need to be not null!");
 		if (exist(uri))
 			throw new DAOException("The block uri: '%s' is already saved", uri);
+		if (data == null)
+			throw new DAOException("The data need to be not null for block uri: %s", uri);
+		if (data.length > IDatabaseBlock.MAX_SIZE)
+			throw new DAOException("The data is bigger (size: %s) as allowed for block uri: %s", data.length, uri);
 		
 		IDatabaseBlock result = null;
 		

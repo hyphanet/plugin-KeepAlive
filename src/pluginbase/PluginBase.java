@@ -266,15 +266,25 @@ public abstract class PluginBase implements FredPlugin, FredPluginThreadless,
 	// log files
 	private synchronized void initLog(String strFilename) {
 		try {
-			
 			if (!mLogFiles.containsKey(strFilename)) {
 				final RandomAccessFile file = new RandomAccessFile(strPath + "/" + strFilename, "rw");
 				file.seek(file.length());
 				mLogFiles.put(strFilename, file);
 			}
-			
 		} catch (final IOException e) {
 			log("PluginBase.initLog() - file: %s", e, strFilename);
+		}
+	}
+	
+	protected synchronized void removeLogFromMap(String strFilename) {
+		try {
+			RandomAccessFile fileHandle = mLogFiles.get(strFilename);
+			if (fileHandle != null) {
+				fileHandle.close();
+				mLogFiles.remove(strFilename);
+			}
+		} catch (final Exception e) {
+			log("PluginBase.removeLogFromMap() - file: %s", e, strFilename);
 		}
 	}
 	

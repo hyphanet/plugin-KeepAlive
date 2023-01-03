@@ -278,7 +278,9 @@ public class Plugin extends PluginBase {
 		
 		// remove log files
 		try {
-			final File file = new File(getPluginDirectory(), getLogFilename(uriValue));
+			String fileName = getLogFilename(uriValue);
+			removeLogFromMap(fileName);
+			final File file = new File(getPluginDirectory(), fileName);
 			Files.deleteIfExists(file.toPath());
 		} catch (final Exception e) {
 			log("Plugin.removeUriAndFiles(): remove log files was not successful.", e);

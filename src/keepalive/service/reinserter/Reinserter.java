@@ -645,12 +645,18 @@ public final class Reinserter extends Thread {
 		// constructs top level simple manifest (= first action on a new uri)
 		if (metadata == null) {
 			final FetchResult fetchResult = Client.fetch(uri, plugin.getFreenetClient());
+			byte[] fetchBytes = fetchResult.asByteArray();
+			
+			if (fetchBytes.length > IDatabaseBlock.MAX_SIZE) {
+				log("parseMetadata: block is to big", level);
+				return;
+			}
 			
 			final IDatabaseBlock databaseBlock = plugin.databaseDAO.read(uri);
 			if (databaseBlock == null) {
-				plugin.databaseDAO.create(uri, fetchResult.asByteArray());
+				plugin.databaseDAO.create(uri, fetchBytes);
 			} else {
-				databaseBlock.setData(fetchResult.asByteArray());
+				databaseBlock.setData(fetchBytes);
 				plugin.databaseDAO.update(databaseBlock);
 			}
 			
