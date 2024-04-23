@@ -42,7 +42,7 @@ import pluginbase.PluginBase;
  */
 public class Plugin extends PluginBase {
 	
-	public static final String VERSION = "0.3.4.0-PlantEater";
+	public static final String VERSION = "0.3.4.3-PlantEater";
 	public static final String PLUGIN_NAME = "KeepAlive";
 	
 	private Thread reinserterRunner;
@@ -278,7 +278,7 @@ public class Plugin extends PluginBase {
 		
 		// remove log files
 		try {
-			String fileName = getLogFilename(uriValue);
+			final String fileName = getLogFilename(uriValue);
 			removeLogFromMap(fileName);
 			final File file = new File(getPluginDirectory(), fileName);
 			Files.deleteIfExists(file.toPath());

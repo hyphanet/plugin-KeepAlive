@@ -104,7 +104,7 @@ public final class Reinserter extends Thread {
 		
 		try {
 			// init
-			plugin.logF(String.format("start reinserter for site %s (%s)", uri, siteId), 1);
+			plugin.log(String.format("start reinserter for site %s (%s)", uri, siteId), 1);
 			plugin.clearLog(logFilename);
 			isActive(true);
 			long startedAt = System.currentTimeMillis();
@@ -223,10 +223,11 @@ public final class Reinserter extends Thread {
 				}
 				final Segment segment = new Segment(this, segments.size(), segmentSize);
 				for (final IBlock block : uriValue.getBlocks().values()) {
-					if (block.getSegmentId() == segments.size()) {
-						segment.addBlock(block);
-					}
+					// TODO/FIXME: why is that so that the id is bigger than the size?!?
+					if ((block.getSegmentId() == segments.size()) && !segment.addBlock(block))
+						log(String.format("The BlockId: %s is bigger as the segmentSize: %s -> Block skipped!", block.getId(), segmentSize), 2);
 				}
+				
 				segments.add(segment);
 				log(segment, "*** segment size: " + segment.size(), 0);
 				doReinsertions = true;
@@ -561,6 +562,8 @@ public final class Reinserter extends Thread {
 		if (plugin.databaseDAO.lastAccessDiff(topBlockUri) <= TimeUnit.DAYS.toMillis(1))
 			return;
 		
+		log("checkTopBlockAndRepair", 2);
+		
 		try {
 			Client.fetch(topBlockUri, plugin.getFreenetClient());
 		} catch (final FetchException e) {
@@ -633,11 +636,9 @@ public final class Reinserter extends Thread {
 		plugin.uriPropsDAO.update(uriValue);
 	}
 	
-	private void parseMetadata(FreenetURI uri, Metadata metadata, int level)
-			throws FetchFailedException, MetadataParseException, FetchException, IOException, DAOException {
-		if (isInterrupted()) {
+	private void parseMetadata(FreenetURI uri, Metadata metadata, int level) throws FetchFailedException, MetadataParseException, FetchException, IOException, DAOException {
+		if (isInterrupted())
 			return;
-		}
 		
 		// register uri
 		registerBlockUri(uri, true, true, level);
@@ -645,26 +646,28 @@ public final class Reinserter extends Thread {
 		// constructs top level simple manifest (= first action on a new uri)
 		if (metadata == null) {
 			final FetchResult fetchResult = Client.fetch(uri, plugin.getFreenetClient());
-			byte[] fetchBytes = fetchResult.asByteArray();
+			final byte[] fetchBytes = fetchResult.asByteArray();
 			
 			if (fetchBytes.length > IDatabaseBlock.MAX_SIZE) {
-				log("parseMetadata: block is to big", level);
-				return;
-			}
-			
-			final IDatabaseBlock databaseBlock = plugin.databaseDAO.read(uri);
-			if (databaseBlock == null) {
-				plugin.databaseDAO.create(uri, fetchBytes);
+				log(String.format("parseMetadata: block is too big (%s) skipped -> Mime: %s", fetchBytes.length, fetchResult.getMimeType()), level);
 			} else {
-				databaseBlock.setData(fetchBytes);
-				plugin.databaseDAO.update(databaseBlock);
+				// create or update block
+				final IDatabaseBlock databaseBlock = plugin.databaseDAO.read(uri);
+				if (databaseBlock == null) {
+					plugin.databaseDAO.create(uri, fetchBytes);
+				} else {
+					databaseBlock.setData(fetchBytes);
+					plugin.databaseDAO.update(databaseBlock);
+				}
 			}
 			
-			metadata = fetchManifest(uri, null, null);
+			metadata = fetchManifest(fetchBytes, null, null);
 			if (metadata == null) {
 				log("no metadata", level);
 				return;
 			}
+			
+			log(String.format("parseMetadata: metadata: %s", metadata.dump()), level);
 		}
 		
 		// internal manifest (simple manifest)
@@ -847,11 +850,10 @@ public final class Reinserter extends Thread {
 	
 	private Metadata fetchManifest(byte[] data, ARCHIVE_TYPE archiveType, String manifestName) throws IOException {
 		Metadata metadata = null;
+		
 		try (ByteArrayInputStream fetchedDataStream = new ByteArrayInputStream(data)) {
-			
-			if (manifestName == null) {
+			if (manifestName == null)
 				manifestName = ".metadata";
-			}
 			
 			if (archiveType == null) {
 				// try to construct metadata directly
@@ -897,7 +899,6 @@ public final class Reinserter extends Thread {
 							entryName = ((ZipInputStream) inStream).getNextEntry().getName();
 						}
 					}
-					
 				} catch (final Exception e) {
 					if (archiveType != null)
 						log("unzip and construct metadata: " + e.getMessage(), 0, 2);
@@ -908,10 +909,11 @@ public final class Reinserter extends Thread {
 				if (archiveType != null) {
 					manifestName += " (" + archiveType.name() + ")";
 				}
+				
 				metadata.resolve(manifestName);
 			}
-			return metadata;
 			
+			return metadata;
 		}
 	}
 	
@@ -943,27 +945,25 @@ public final class Reinserter extends Thread {
 	}
 	
 	private void registerBlockUri(FreenetURI uri, boolean newSegment, boolean isDataBlock, int logTabLevel) {
-		if (uri != null) { // uri is null if metadata is created from splitfile
-			
-			// no reinsertion for SSK but go to sublevel
-			if (!uri.isCHK()) {
-				log("-> no reinsertion of USK, SSK or KSK", logTabLevel, 2);
-				
-				// check if uri already reinserted during this session
-			} else if (uriValue.getBlocks().containsKey(Client.normalizeUri(uri))) {
-				log("-> already registered block", logTabLevel, 2);
-				
-				// register
-			} else {
-				if (newSegment) {
-					parsedSegmentId++;
-					parsedBlockId = -1;
-				}
-				uri = Client.normalizeUri(uri);
-				uriValue.getBlocks().put(uri, new Block(uri, parsedSegmentId, ++parsedBlockId, isDataBlock));
-				log("-> registered block", logTabLevel, 2);
+		// uri is null if metadata is created from splitfile
+		if (uri == null) 
+			return;
+		
+		// no reinsertion for SSK but go to sublevel
+		if (!uri.isCHK()) {
+			log("-> no reinsertion of USK, SSK or KSK", logTabLevel, 2);
+		} else if (uriValue.getBlocks().containsKey(Client.normalizeUri(uri))) {
+			// check if uri already reinserted during this session
+			log("-> already registered block", logTabLevel, 2);
+		} else {
+			// register
+			if (newSegment) {
+				parsedSegmentId++;
+				parsedBlockId = -1;
 			}
-			
+			uri = Client.normalizeUri(uri);
+			uriValue.getBlocks().put(uri, new Block(uri, parsedSegmentId, ++parsedBlockId, isDataBlock));
+			log("-> registered block", logTabLevel, 2);
 		}
 	}
 	

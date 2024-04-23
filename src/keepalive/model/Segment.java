@@ -41,18 +41,22 @@ public class Segment {
 		this.reinserter = reinserter;
 		this.id = id;
 		this.size = size;
-		this.blocks = new Block[size];
+		this.blocks = new IBlock[size];
 	}
 	
 	public IBlock getBlock(int id) {
 		return blocks[id];
 	}
 	
-	public void addBlock(IBlock block) {
+	public boolean addBlock(IBlock block) {
+		if (block.getId() > size)
+			return false;
+		
 		blocks[block.getId()] = block;
-		if (block.isDataBlock()) {
+		if (block.isDataBlock())
 			dataBlocksCount++;
-		}
+		
+		return true;
 	}
 	
 	public IBlock getDataBlock(int id) {

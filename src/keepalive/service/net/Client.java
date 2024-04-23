@@ -35,9 +35,8 @@ public class Client {
 		if (uri == null)
 			return null;
 		
-		if (uri.isCHK()) {
+		if (uri.isCHK())
 			uri.getExtra()[2] = 0; // deactivate control flag
-		}
 		
 		final FetchContext fetchContext = hlsc.getFetchContext();
 		fetchContext.returnZIPManifests = true;
@@ -52,12 +51,12 @@ public class Client {
 	}
 	
 	public static FreenetURI normalizeUri(FreenetURI uri) {
-		if (uri.isUSK()) {
+		if (uri.isUSK())
 			uri = uri.sskForUSK();
-		}
-		if (uri.hasMetaStrings()) {
+		
+		if (uri.hasMetaStrings())
 			uri = uri.setMetaString(null);
-		}
+		
 		return uri;
 	}
 	

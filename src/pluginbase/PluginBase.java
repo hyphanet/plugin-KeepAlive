@@ -130,7 +130,7 @@ public abstract class PluginBase implements FredPlugin, FredPluginThreadless,
 	
 	@Override
 	public String getVersion() { // FredPluginVersioned
-		return strTitle + " " + strVersion;
+		return strVersion;
 	}
 	
 	/**
@@ -278,7 +278,7 @@ public abstract class PluginBase implements FredPlugin, FredPluginThreadless,
 	
 	protected synchronized void removeLogFromMap(String strFilename) {
 		try {
-			RandomAccessFile fileHandle = mLogFiles.get(strFilename);
+			final RandomAccessFile fileHandle = mLogFiles.get(strFilename);
 			if (fileHandle != null) {
 				fileHandle.close();
 				mLogFiles.remove(strFilename);

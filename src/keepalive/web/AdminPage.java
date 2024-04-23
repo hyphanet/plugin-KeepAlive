@@ -212,14 +212,9 @@ public class AdminPage extends PageBase {
 	}
 	
 	private void sitesBox(List<IUriValue> uriValues) throws Exception {
-		final StringBuilder html = new StringBuilder(html("add_key", formPassword))
-				.append("<br><table><tr style=\"text-align:center;\">")
-				.append("<td>URI</td><td>total<br>blocks</td>")
-				.append("<td>available<br>blocks</td><td>missed<br>blocks</td>")
-				.append("<td>blocks<br>availability</td><td>segments<br>availability</td>")
-				.append("<td colspan='4'>Actions</td>")
-				.append("</tr>");
+		final StringBuilder html = new StringBuilder(html("add_key", formPassword)).append("<br>");
 		
+		final StringBuilder htmlEntries = new StringBuilder();
 		for (final IUriValue uriValue : uriValues) {
 			final String uri = uriValue.getUri().toString();
 			
@@ -240,48 +235,22 @@ public class AdminPage extends PageBase {
 				segmentsAvailability = (int) ((double) availableSegments / finishedSegmentsCount * 100);
 			}
 			
-			final String tdAndCenter = "</td><td align=\"center\">";
-			html.append("<tr>" + "<td><a href='/")
-					.append(uri)
-					.append("'>")
-					.append(uriValue.getShortUri())
-					.append("</a>" + tdAndCenter)
-					.append(uriValue.getBlocks().size())
-					.append(tdAndCenter)
-					.append(success)
-					.append(tdAndCenter)
-					.append(failure)
-					.append(tdAndCenter)
-					.append(persistence)
-					.append(" %" + tdAndCenter)
-					.append(segmentsAvailability)
-					.append(" %</td><td><a href='?remove=")
-					.append(uriValue.getUriId())
-					.append(FORM_PASS)
-					.append(formPassword)
-					.append("'>remove</a></td><td><a href='?log=")
-					.append(uriValue.getUriId())
-					.append(FORM_PASS)
-					.append(formPassword)
-					.append("#log_anchor'>log</a></td>");
-			
-			if (uriValue.getUriId() == getIntProp(PropertiesKey.ACTIVE)) {
-				html.append("<td><a href='?stop=")
-						.append(uriValue.getUriId())
-						.append(FORM_PASS)
-						.append(formPassword)
-						.append("'>stop</a></td><td><b>active</b></td>");
-			} else {
-				html.append("<td><a href='?start=")
-						.append(uriValue.getUriId())
-						.append(FORM_PASS)
-						.append(formPassword)
-						.append("'>start</a></td><td></td>");
-			}
-			
-			html.append("</tr>");
+			final boolean isActive = uriValue.getUriId() == getIntProp(PropertiesKey.ACTIVE);
+			final String entryHtml = html("url_entry", formPassword)
+					.replace("${url_full}", uri)
+					.replace("${url_short}", uriValue.getShortUri())
+					.replace("${url_blockSize}", Integer.toString(uriValue.getBlocks().size()))
+					.replace("${url_success}", Integer.toString(success))
+					.replace("${url_failure}", Integer.toString(failure))
+					.replace("${url_persistence}", Integer.toString(persistence))
+					.replace("${url_segmentsAvailability}", Integer.toString(segmentsAvailability))
+					.replace("${url_id}", Integer.toString(uriValue.getUriId()))
+					.replace("${url_modus}", isActive ? "stop" : "start")
+					.replace("${url_active}", isActive ? "active" : "");
+			htmlEntries.append(entryHtml);
 		}
-		html.append("</table>");
+		
+		html.append(html("overview_table", formPassword).replace("${url_entries}", htmlEntries.toString()));
 		
 		addBox("Add or remove a key", html.toString(), "page-kp-keys");
 	}

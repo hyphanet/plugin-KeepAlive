@@ -36,7 +36,7 @@ public enum PropertiesKey {
 	LOG_LINKS("log_links", 1),
 	LOG_UTC("log_utc", 1),
 	SINGLE_URL_TIMESLOT("single_url_timeslot", 4),
-	STACKTRACE("stackTrace", "false"),
+	STACKTRACE("stackTrace", "true"),
 	
 	// uri specific
 	URI("uri"),

@@ -157,3 +157,11 @@ input[type="text"] {
     padding-bottom: 8em;
   }
 }
+
+/* for the entry table anchors, because the freenet header */
+a.anchor {
+    display: block;
+    position: relative;
+    top: -100px;
+    visibility: hidden;
+}
